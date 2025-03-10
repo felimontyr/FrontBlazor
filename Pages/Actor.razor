@@ -1,0 +1,131 @@
+@page "/actor"  
+@using System.Collections.Generic  
+@using System.Text.Json  
+@using Services  
+@inject ServicioEntidad servicioEntidad  
+@inject NavigationManager navegacionManager  
+
+<PageTitle>Lista de Actores</PageTitle>  
+
+<h1>Actores</h1>  
+
+<div class="mb-3">  
+    <button class="btn btn-primary" disabled>Crear Nuevo (Próximamente)</button>  
+</div>  
+
+@if (cargando)  
+{  
+    <p><em>Cargando...</em></p>  
+}  
+else if (actores == null || actores.Count == 0)  
+{  
+    <p>No hay actores disponibles.</p>  
+}  
+else  
+{  
+    <div class="table-responsive">  
+        <table class="table table-striped">  
+            <thead>  
+                <tr>  
+                    <th>ID</th>  
+                    <th>Nombre</th>  
+                    <th>Tipo de Actor</th>  
+                </tr>  
+            </thead>  
+            <tbody>  
+                @foreach (var actor in actores)  
+                {  
+                    <tr>  
+                        <td>@ObtenerValor(actor, "id")</td>  
+                        <td>@ObtenerValor(actor, "nombre")</td>  
+                        <td>@ObtenerValor(actor, "fkidtipoactor")</td>  
+                    </tr>  
+                }  
+            </tbody>  
+        </table>  
+    </div>  
+}  
+
+@if (errorMensaje != null)  
+{  
+    <div class="alert alert-danger">  
+        Error: @errorMensaje  
+    </div>  
+}  
+
+@code {  
+    // Lista para almacenar los actores que se obtienen de la API  
+    private List<Dictionary<string, object>> actores = new List<Dictionary<string, object>>();  
+    
+    // Bandera para indicar si se están cargando los datos  
+    private bool cargando = true;  
+    
+    // Variable para almacenar mensajes de error  
+    private string? errorMensaje = null;  
+    
+    // Constantes para los parámetros de la API  
+    private const string PROYECTO = "proyecto";  
+    private const string TABLA = "actor";  
+
+    // Método que se ejecuta cuando se inicializa el componente  
+    protected override async Task OnInitializedAsync()  
+    {  
+        // Llamar al método para cargar los actores  
+        await CargarActores();  
+    }  
+
+    // Método asíncrono para cargar los actores desde la API  
+    private async Task CargarActores()  
+    {  
+        // Establecer la bandera de carga en verdadero  
+        cargando = true;  
+        // Limpiar cualquier mensaje de error previo  
+        errorMensaje = null;  
+        
+        try  
+        {  
+            // Obtener todos los actores usando el servicio de entidades  
+            var resultado = await servicioEntidad.ObtenerTodosAsync(PROYECTO, TABLA);  
+            
+            // Si la lista no es null, asignarla a la variable actores  
+            if (resultado != null)  
+            {  
+                actores = resultado;  
+            }  
+            else  
+            {  
+                // Si es null, inicializar como lista vacía para evitar errores  
+                actores = new List<Dictionary<string, object>>();  
+            }  
+        }  
+        catch (Exception ex)  
+        {  
+            // En caso de error, guardar el mensaje y crear lista vacía  
+            errorMensaje = $"Error al cargar actores: {ex.Message}";  
+            actores = new List<Dictionary<string, object>>();  
+        }  
+        finally  
+        {  
+            // Establecer la bandera de carga en falso una vez finalizada la operación  
+            cargando = false;  
+        }  
+    }  
+
+    // Método para obtener un valor específico de un diccionario de manera segura  
+    private string ObtenerValor(Dictionary<string, object> diccionario, string clave)  
+    {  
+        // Verificar si el diccionario es null  
+        if (diccionario == null)  
+            return string.Empty;  
+            
+        // Verificar si el diccionario contiene la clave  
+        if (diccionario.TryGetValue(clave, out var valor))  
+        {  
+            // Devolver el valor como cadena, o cadena vacía si es null  
+            return valor?.ToString() ?? string.Empty;  
+        }  
+        
+        // Si la clave no existe, devolver cadena vacía  
+        return string.Empty;  
+    }  
+}

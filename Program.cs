@@ -22,7 +22,7 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 // Este HttpClient se inicializa con la dirección base de la API genérica
 // La URL base debe terminar con una barra "/" para que las rutas relativas funcionen correctamente
 builder.Services.AddScoped(sp => new HttpClient { 
-    BaseAddress = new Uri("http://localhost:5178/api/") 
+    BaseAddress = new Uri("http://localhost:5266/api/") 
 });
 
 // Registra el servicio genérico de entidades en el contenedor de inyección de dependencias
