@@ -11,7 +11,7 @@
 <div>
     <input @bind="nuevaSubseccionId" placeholder="ID de la subsección" type="number" />
     <input @bind="nuevaSubseccionNombre" placeholder="Nombre de la subsección" />
-    <button @onclick="CrearSubseccion">Crear</button>
+    <button class="btn-success" @onclick="CrearSubseccion">Crear</button>
 </div>
 
 <ul>
@@ -21,14 +21,14 @@
             @if (subseccionEditarId == subseccion["id"].ToString())
             {
                 <input @bind="subseccionEditarNombre" />
-                <button @onclick="() => GuardarEdicion(subseccion)">Guardar</button>
+                <button class="btn-primary" @onclick="() => GuardarEdicion(subseccion)">Guardar</button>
                 <button @onclick="CancelarEdicion">Cancelar</button>
             }
             else
             {
                 @subseccion["nombre"]
-                <button @onclick="() => IniciarEdicion(subseccion)">Editar</button>
-                <button @onclick="() => EliminarSubseccion(subseccion)">Eliminar</button>
+                <button class="btn-primary" @onclick="() => IniciarEdicion(subseccion)">Editar</button>
+                <button class="btn btn-danger" @onclick="() => EliminarSubseccion(subseccion)">Eliminar</button>
             }
         </li>
     }
