@@ -1,0 +1,166 @@
+@page "/tipoindicador"
+@using System.Collections.Generic
+@using System.Text.Json
+@using Services
+@inject ServicioEntidad servicioEntidad
+@inject NavigationManager navegacionManager
+@inject IJSRuntime JSRuntime
+
+<h3>Tipos de Indicador</h3>
+
+<div>
+    <input @bind="nuevoTipoIndicadorNombre" placeholder="Nombre del tipo de indicador" />
+    <button class="btn-success" @onclick="CrearTipoIndicador">Crear</button>
+</div>
+
+@if (!string.IsNullOrEmpty(errorMensaje))
+{
+    <div style="color: red;">@errorMensaje</div>
+}
+
+<ul>
+    @foreach (var tipoIndicador in tiposIndicador)
+    {
+        <li>
+            @if (tipoIndicadorEditarId == tipoIndicador["id"].ToString())
+            {
+                <input @bind="tipoIndicadorEditarNombre" />
+                <button class="btn-primary" @onclick="() => GuardarEdicion(tipoIndicador)">Guardar</button>
+                <button @onclick="CancelarEdicion">Cancelar</button>
+            }
+            else
+            {
+                @tipoIndicador["nombre"]
+                <button class="btn-primary" @onclick="() => IniciarEdicion(tipoIndicador)">Editar</button>
+                <button class="btn btn-danger" @onclick="() => EliminarTipoIndicador(tipoIndicador)">Eliminar</button>
+            }
+        </li>
+    }
+</ul>
+
+@code {
+    private const string PROYECTO = "proyecto";
+    private const string TABLA = "tipoindicador"; // Cambia el nombre de la tabla
+    private List<Dictionary<string, object>> tiposIndicador = new List<Dictionary<string, object>>();
+    private string nuevoTipoIndicadorNombre = string.Empty;
+    private string tipoIndicadorEditarId = string.Empty;
+    private string tipoIndicadorEditarNombre = string.Empty;
+    private string? errorMensaje = null;
+    private bool cargando = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ObtenerTiposIndicador();
+    }
+
+    private async Task ObtenerTiposIndicador()
+    {
+        cargando = true;
+        errorMensaje = null;
+
+        try
+        {
+            var resultado = await servicioEntidad.ObtenerTodosAsync(PROYECTO, TABLA);
+
+            if (resultado != null)
+            {
+                tiposIndicador = resultado;
+            }
+            else
+            {
+                tiposIndicador = new List<Dictionary<string, object>>();
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error al cargar los tipos de indicador: {ex.Message}";
+            tiposIndicador = new List<Dictionary<string, object>>();
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+    private async Task CrearTipoIndicador()
+    {
+        errorMensaje = null;
+
+        // Validar que el nombre no esté vacío
+        if (string.IsNullOrWhiteSpace(nuevoTipoIndicadorNombre))
+        {
+            errorMensaje = "El nombre no puede estar vacío.";
+            return;
+        }
+
+        // Crear el nuevo tipo de indicador (sin incluir el ID)
+        var nuevoTipoIndicador = new Dictionary<string, object>
+        {
+            { "nombre", nuevoTipoIndicadorNombre }
+        };
+
+        // Enviar la solicitud al servidor
+        bool resultado = await servicioEntidad.CrearAsync(PROYECTO, TABLA, nuevoTipoIndicador);
+        if (resultado)
+        {
+            Console.WriteLine("Tipo de indicador creado con éxito.");
+            nuevoTipoIndicadorNombre = string.Empty; // Limpiar el campo de nombre
+            await ObtenerTiposIndicador(); // Recargar la lista de tipos de indicador
+        }
+        else
+        {
+            errorMensaje = "Error al crear el tipo de indicador.";
+        }
+    }
+
+    private void IniciarEdicion(Dictionary<string, object> tipoIndicador)
+    {
+        tipoIndicadorEditarId = tipoIndicador["id"].ToString();
+        tipoIndicadorEditarNombre = tipoIndicador["nombre"].ToString();
+    }
+
+    private void CancelarEdicion()
+    {
+        tipoIndicadorEditarId = string.Empty;
+        tipoIndicadorEditarNombre = string.Empty;
+    }
+
+    private async Task GuardarEdicion(Dictionary<string, object> tipoIndicador)
+    {
+        var tipoIndicadorActualizado = new Dictionary<string, object>
+        {
+            { "nombre", tipoIndicadorEditarNombre } // Solo actualizamos el nombre
+        };
+
+        bool resultado = await servicioEntidad.ActualizarAsync(PROYECTO, TABLA, "id", tipoIndicador["id"].ToString(), tipoIndicadorActualizado);
+        if (resultado)
+        {
+            Console.WriteLine("Tipo de indicador actualizado con éxito.");
+            tipoIndicadorEditarId = string.Empty;
+            tipoIndicadorEditarNombre = string.Empty;
+            await ObtenerTiposIndicador();
+        }
+        else
+        {
+            errorMensaje = "Error al actualizar el tipo de indicador.";
+        }
+    }
+
+    private async Task EliminarTipoIndicador(Dictionary<string, object> tipoIndicador)
+    {
+        bool confirmar = await JSRuntime.InvokeAsync<bool>("confirm", $"¿Estás seguro de eliminar el tipo de indicador '{tipoIndicador["nombre"]}'?");
+        if (confirmar)
+        {
+            bool resultado = await servicioEntidad.EliminarAsync(PROYECTO, TABLA, "id", tipoIndicador["id"].ToString());
+            if (resultado)
+            {
+                Console.WriteLine("Tipo de indicador eliminado con éxito.");
+                await ObtenerTiposIndicador();
+            }
+            else
+            {
+                errorMensaje = "Error al eliminar el tipo de indicador.";
+            }
+        }
+    }
+}

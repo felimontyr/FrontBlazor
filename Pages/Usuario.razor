@@ -1,0 +1,184 @@
+@page "/usuario"
+@using System.Collections.Generic
+@using System.Text.Json
+@using Services
+@inject ServicioEntidad servicioEntidad
+@inject NavigationManager navegacionManager
+@inject IJSRuntime JSRuntime
+
+<h3>Usuarios</h3>
+
+<div>
+    <input @bind="nuevoUsuarioEmail" placeholder="Email del usuario" />
+    <input @bind="nuevoUsuarioContrasena" placeholder="Contraseña del usuario" type="password" />
+    <button class="btn-success" @onclick="CrearUsuario">Crear</button>
+</div>
+
+@if (!string.IsNullOrEmpty(errorMensaje))
+{
+    <div style="color: red;">@errorMensaje</div>
+}
+
+<ul>
+    @foreach (var usuario in usuarios)
+    {
+        <li>
+            @if (usuarioEditarEmail == usuario["email"].ToString())
+            {
+                <input @bind="usuarioEditarContrasena" placeholder="Nueva contraseña" type="password" />
+                <button class="btn-primary" @onclick="() => GuardarEdicion(usuario)">Guardar</button>
+                <button @onclick="CancelarEdicion">Cancelar</button>
+            }
+            else
+            {
+                @usuario["email"]
+                <button class="btn-primary" @onclick="() => IniciarEdicion(usuario)">Editar</button>
+                <button class="btn btn-danger" @onclick="() => EliminarUsuario(usuario)">Eliminar</button>
+            }
+        </li>
+    }
+</ul>
+
+@code {
+    private const string PROYECTO = "proyecto";
+    private const string TABLA = "usuario"; // Cambia el nombre de la tabla
+    private List<Dictionary<string, object>> usuarios = new List<Dictionary<string, object>>();
+    private string nuevoUsuarioEmail = string.Empty;
+    private string nuevoUsuarioContrasena = string.Empty;
+    private string usuarioEditarEmail = string.Empty;
+    private string usuarioEditarContrasena = string.Empty;
+    private string? errorMensaje = null;
+    private bool cargando = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ObtenerUsuarios();
+    }
+
+    private async Task ObtenerUsuarios()
+    {
+        cargando = true;
+        errorMensaje = null;
+
+        try
+        {
+            var resultado = await servicioEntidad.ObtenerTodosAsync(PROYECTO, TABLA);
+
+            if (resultado != null)
+            {
+                usuarios = resultado;
+            }
+            else
+            {
+                usuarios = new List<Dictionary<string, object>>();
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error al cargar los usuarios: {ex.Message}";
+            usuarios = new List<Dictionary<string, object>>();
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+    private async Task CrearUsuario()
+    {
+        errorMensaje = null;
+
+        // Validar que el email y la contraseña no estén vacíos
+        if (string.IsNullOrWhiteSpace(nuevoUsuarioEmail))
+        {
+            errorMensaje = "El email no puede estar vacío.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(nuevoUsuarioContrasena))
+        {
+            errorMensaje = "La contraseña no puede estar vacía.";
+            return;
+        }
+
+        // Validar que el email no esté duplicado
+        bool emailDuplicado = usuarios.Any(u => u["email"].ToString() == nuevoUsuarioEmail);
+        if (emailDuplicado)
+        {
+            errorMensaje = "El email ya existe. Por favor, ingrese un email único.";
+            return;
+        }
+
+        // Crear el nuevo usuario
+        var nuevoUsuario = new Dictionary<string, object>
+        {
+            { "email", nuevoUsuarioEmail },
+            { "contrasena", nuevoUsuarioContrasena }
+        };
+
+        // Enviar la solicitud al servidor
+        bool resultado = await servicioEntidad.CrearAsync(PROYECTO, TABLA, nuevoUsuario);
+        if (resultado)
+        {
+            Console.WriteLine("Usuario creado con éxito.");
+            nuevoUsuarioEmail = string.Empty; // Limpiar el campo de email
+            nuevoUsuarioContrasena = string.Empty; // Limpiar el campo de contraseña
+            await ObtenerUsuarios(); // Recargar la lista de usuarios
+        }
+        else
+        {
+            errorMensaje = "Error al crear el usuario.";
+        }
+    }
+
+    private void IniciarEdicion(Dictionary<string, object> usuario)
+    {
+        usuarioEditarEmail = usuario["email"].ToString();
+        usuarioEditarContrasena = usuario["contrasena"].ToString();
+    }
+
+    private void CancelarEdicion()
+    {
+        usuarioEditarEmail = string.Empty;
+        usuarioEditarContrasena = string.Empty;
+    }
+
+    private async Task GuardarEdicion(Dictionary<string, object> usuario)
+    {
+        var usuarioActualizado = new Dictionary<string, object>
+        {
+            { "contrasena", usuarioEditarContrasena } // Solo actualizamos la contraseña
+        };
+
+        bool resultado = await servicioEntidad.ActualizarAsync(PROYECTO, TABLA, "email", usuario["email"].ToString(), usuarioActualizado);
+        if (resultado)
+        {
+            Console.WriteLine("Usuario actualizado con éxito.");
+            usuarioEditarEmail = string.Empty;
+            usuarioEditarContrasena = string.Empty;
+            await ObtenerUsuarios();
+        }
+        else
+        {
+            errorMensaje = "Error al actualizar el usuario.";
+        }
+    }
+
+    private async Task EliminarUsuario(Dictionary<string, object> usuario)
+    {
+        bool confirmar = await JSRuntime.InvokeAsync<bool>("confirm", $"¿Estás seguro de eliminar el usuario '{usuario["email"]}'?");
+        if (confirmar)
+        {
+            bool resultado = await servicioEntidad.EliminarAsync(PROYECTO, TABLA, "email", usuario["email"].ToString());
+            if (resultado)
+            {
+                Console.WriteLine("Usuario eliminado con éxito.");
+                await ObtenerUsuarios();
+            }
+            else
+            {
+                errorMensaje = "Error al eliminar el usuario.";
+            }
+        }
+    }
+}

@@ -1,0 +1,163 @@
+@page "/tipoactor"
+@using System.Collections.Generic
+@using System.Text.Json
+@using Services
+@inject ServicioEntidad servicioEntidad
+@inject NavigationManager navegacionManager
+@inject IJSRuntime JSRuntime
+
+<h3>Tipos de Actor</h3>
+
+<div>
+    <input @bind="nuevoTipoActorNombre" placeholder="Nombre del tipo de actor" />
+    <button class="btn-success" @onclick="CrearTipoActor">Crear</button>
+</div>
+
+@if (!string.IsNullOrEmpty(errorMensaje))
+{
+    <div style="color: red;">@errorMensaje</div>
+}
+
+<ul>
+    @foreach (var tipoActor in tiposActor)
+    {
+        <li>
+            @if (tipoActorEditarId == tipoActor["id"].ToString())
+            {
+                <input @bind="tipoActorEditarNombre" />
+                <button class="btn-primary" @onclick="() => GuardarEdicion(tipoActor)">Guardar</button>
+                <button @onclick="CancelarEdicion">Cancelar</button>
+            }
+            else
+            {
+                @tipoActor["nombre"]
+                <button class="btn-primary" @onclick="() => IniciarEdicion(tipoActor)">Editar</button>
+                <button class="btn btn-danger" @onclick="() => EliminarTipoActor(tipoActor)">Eliminar</button>
+            }
+        </li>
+    }
+</ul>
+
+@code {
+    private const string PROYECTO = "proyecto";
+    private const string TABLA = "tipoactor";
+    private List<Dictionary<string, object>> tiposActor = new List<Dictionary<string, object>>();
+    private string nuevoTipoActorNombre = string.Empty;
+    private string tipoActorEditarId = string.Empty;
+    private string tipoActorEditarNombre = string.Empty;
+    private string? errorMensaje = null;
+    private bool cargando = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ObtenerTiposActor();
+    }
+
+    private async Task ObtenerTiposActor()
+    {
+        cargando = true;
+        errorMensaje = null;
+
+        try
+        {
+            var resultado = await servicioEntidad.ObtenerTodosAsync(PROYECTO, TABLA);
+
+            if (resultado != null)
+            {
+                tiposActor = resultado;
+            }
+            else
+            {
+                tiposActor = new List<Dictionary<string, object>>();
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error al cargar los tipos de actor: {ex.Message}";
+            tiposActor = new List<Dictionary<string, object>>();
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+    private async Task CrearTipoActor()
+    {
+        errorMensaje = null;
+
+        if (string.IsNullOrWhiteSpace(nuevoTipoActorNombre))
+        {
+            errorMensaje = "El nombre no puede estar vacío.";
+            return;
+        }
+
+        var nuevoTipoActor = new Dictionary<string, object>
+        {
+            { "nombre", nuevoTipoActorNombre }
+        };
+
+        bool resultado = await servicioEntidad.CrearAsync(PROYECTO, TABLA, nuevoTipoActor);
+        if (resultado)
+        {
+            Console.WriteLine("Tipo de actor creado con éxito.");
+            nuevoTipoActorNombre = string.Empty;
+            await ObtenerTiposActor();
+        }
+        else
+        {
+            errorMensaje = "Error al crear el tipo de actor.";
+        }
+    }
+
+    private void IniciarEdicion(Dictionary<string, object> tipoActor)
+    {
+        tipoActorEditarId = tipoActor["id"].ToString();
+        tipoActorEditarNombre = tipoActor["nombre"].ToString();
+    }
+
+    private void CancelarEdicion()
+    {
+        tipoActorEditarId = string.Empty;
+        tipoActorEditarNombre = string.Empty;
+    }
+
+    private async Task GuardarEdicion(Dictionary<string, object> tipoActor)
+    {
+        var tipoActorActualizado = new Dictionary<string, object>
+        {
+            { "nombre", tipoActorEditarNombre }
+        };
+
+        bool resultado = await servicioEntidad.ActualizarAsync(PROYECTO, TABLA, "id", tipoActor["id"].ToString(), tipoActorActualizado);
+        if (resultado)
+        {
+            Console.WriteLine("Tipo de actor actualizado con éxito.");
+            tipoActorEditarId = string.Empty;
+            tipoActorEditarNombre = string.Empty;
+            await ObtenerTiposActor();
+        }
+        else
+        {
+            errorMensaje = "Error al actualizar el tipo de actor.";
+        }
+    }
+
+    private async Task EliminarTipoActor(Dictionary<string, object> tipoActor)
+    {
+        bool confirmar = await JSRuntime.InvokeAsync<bool>("confirm", $"¿Estás seguro de eliminar el tipo de actor '{tipoActor["nombre"]}'?");
+        if (confirmar)
+        {
+            bool resultado = await servicioEntidad.EliminarAsync(PROYECTO, TABLA, "id", tipoActor["id"].ToString());
+            if (resultado)
+            {
+                Console.WriteLine("Tipo de actor eliminado con éxito.");
+                await ObtenerTiposActor();
+            }
+            else
+            {
+                errorMensaje = "Error al eliminar el tipo de actor.";
+            }
+        }
+    }
+}
