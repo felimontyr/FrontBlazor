@@ -1,0 +1,195 @@
+@page "/RepresenVisual"
+@using System.Collections.Generic
+@using System.Text.Json
+@using Services
+@inject ServicioEntidad servicioEntidad
+@inject NavigationManager navegacionManager
+@inject IJSRuntime JSRuntime
+
+<h3>Representaciones Visuales</h3>
+
+<div>
+    <input @bind="nuevaRepresenVisualNombre" placeholder="Nombre de la representación visual" />
+    <button class="btn-success" @onclick="CrearRepresenVisual">Crear</button>
+</div>
+
+@if (errorMensaje != null)
+{
+    <div class="alert alert-danger">@errorMensaje</div>
+}
+
+@if (cargando)
+{
+    <div>Cargando representaciones visuales...</div>
+}
+else
+{
+    <ul class="list-group mt-3">
+        @foreach (var represenVisual in represenVisuales)
+        {
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                @if (represenVisualEditarId == represenVisual["id"].ToString())
+                {
+                    <div class="d-flex gap-2">
+                        <input @bind="represenVisualEditarNombre" class="form-control" />
+                        <button class="btn btn-sm btn-success" @onclick="() => GuardarEdicion(represenVisual)">Guardar</button>
+                        <button class="btn btn-sm btn-secondary" @onclick="CancelarEdicion">Cancelar</button>
+                    </div>
+                }
+                else
+                {
+                    <div>
+                        <span class="fw-bold">#@represenVisual["id"]</span> - @represenVisual["nombre"]
+                    </div>
+                    <div>
+                        <button class="btn btn-sm btn-primary" @onclick="() => IniciarEdicion(represenVisual)">Editar</button>
+                        <button class="btn btn-sm btn-danger" @onclick="() => EliminarRepresenVisual(represenVisual)">Eliminar</button>
+                    </div>
+                }
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    private const string PROYECTO = "proyecto";
+    private const string TABLA = "represenvisual";
+    private List<Dictionary<string, object>> represenVisuales = new List<Dictionary<string, object>>();
+    private string nuevaRepresenVisualNombre = string.Empty;
+    private string represenVisualEditarId = string.Empty;
+    private string represenVisualEditarNombre = string.Empty;
+    private string? errorMensaje = null;
+    private bool cargando = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ObtenerRepresenVisuales();
+    }
+
+    private async Task ObtenerRepresenVisuales()
+    {
+        cargando = true;
+        errorMensaje = null;
+        
+        try
+        {
+            var resultado = await servicioEntidad.ObtenerTodosAsync(PROYECTO, TABLA);
+            represenVisuales = resultado?.Count > 0 ? resultado : new List<Dictionary<string, object>>();
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error al cargar las representaciones visuales: {ex.Message}";
+            represenVisuales = new List<Dictionary<string, object>>();
+        }
+        finally
+        {
+            cargando = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task CrearRepresenVisual()
+    {
+        errorMensaje = null;
+
+        try
+        {
+            var nuevaRepresenVisual = new Dictionary<string, object>
+            {
+                { "nombre", nuevaRepresenVisualNombre }
+            };
+
+            bool resultado = await servicioEntidad.CrearAsync(PROYECTO, TABLA, nuevaRepresenVisual);
+            
+            if (resultado)
+            {
+                nuevaRepresenVisualNombre = string.Empty;
+                await ObtenerRepresenVisuales();
+            }
+            else
+            {
+                errorMensaje = "Error al crear la representación visual. Intente nuevamente.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error crítico: {ex.Message}";
+        }
+    }
+
+    private void IniciarEdicion(Dictionary<string, object> represenVisual)
+    {
+        represenVisualEditarId = represenVisual["id"].ToString();
+        represenVisualEditarNombre = represenVisual["nombre"].ToString();
+    }
+
+    private void CancelarEdicion()
+    {
+        represenVisualEditarId = string.Empty;
+        represenVisualEditarNombre = string.Empty;
+    }
+
+   private async Task GuardarEdicion(Dictionary<string, object> represenVisual)
+    {
+        try
+        {
+            var represenVisualActualizada = new Dictionary<string, object>
+            {
+                { "nombre", represenVisualEditarNombre } // Se omite "id" para no modificarlo
+            };
+
+            bool resultado = await servicioEntidad.ActualizarAsync(
+                PROYECTO, 
+                TABLA, 
+                "id", 
+                represenVisual["id"].ToString(), // Se usa solo como clave para actualizar
+                represenVisualActualizada
+            );
+
+            if (resultado)
+            {
+                await ObtenerRepresenVisuales();
+                CancelarEdicion();
+            }
+            else
+            {
+                errorMensaje = "Error al actualizar la representación visual.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error de actualización: {ex.Message}";
+        }
+    }
+
+    private async Task EliminarRepresenVisual(Dictionary<string, object> represenVisual)
+    {
+        bool confirmar = await JSRuntime.InvokeAsync<bool>("confirm", 
+            $"¿Está seguro de eliminar la representación visual '{represenVisual["nombre"]}'?");
+        
+        if (!confirmar) return;
+
+        try
+        {
+            bool resultado = await servicioEntidad.EliminarAsync(
+                PROYECTO, 
+                TABLA, 
+                "id", 
+                represenVisual["id"].ToString()
+            );
+
+            if (resultado)
+            {
+                await ObtenerRepresenVisuales();
+            }
+            else
+            {
+                errorMensaje = "Error al eliminar la representación visual.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error de eliminación: {ex.Message}";
+        }
+    }
+}

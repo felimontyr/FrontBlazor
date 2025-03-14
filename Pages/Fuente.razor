@@ -1,0 +1,196 @@
+@page "/Fuente"
+@using System.Collections.Generic
+@using System.Text.Json
+@using Services
+@inject ServicioEntidad servicioEntidad
+@inject NavigationManager navegacionManager
+@inject IJSRuntime JSRuntime
+
+<h3>Fuentes</h3>
+
+<div>
+    <input @bind="nuevaFuenteNombre" placeholder="Nombre de la fuente" />
+    <button class="btn-success" @onclick="CrearFuente">Crear</button>
+</div>
+
+@if (errorMensaje != null)
+{
+    <div class="alert alert-danger">@errorMensaje</div>
+}
+
+@if (cargando)
+{
+    <div>Cargando fuentes...</div>
+}
+else
+{
+    <ul class="list-group mt-3">
+        @foreach (var fuente in fuentes)
+        {
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                @if (fuenteEditarId == fuente["id"].ToString())
+                {
+                    <div class="d-flex gap-2">
+                        <input @bind="fuenteEditarNombre" class="form-control" />
+                        <button class="btn btn-sm btn-success" @onclick="() => GuardarEdicion(fuente)">Guardar</button>
+                        <button class="btn btn-sm btn-secondary" @onclick="CancelarEdicion">Cancelar</button>
+                    </div>
+                }
+                else
+                {
+                    <div>
+                        <span class="fw-bold">#@fuente["id"]</span> - @fuente["nombre"]
+                    </div>
+                    <div>
+                        <button class="btn btn-sm btn-primary" @onclick="() => IniciarEdicion(fuente)">Editar</button>
+                        <button class="btn btn-sm btn-danger" @onclick="() => EliminarFuente(fuente)">Eliminar</button>
+                    </div>
+                }
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    private const string PROYECTO = "proyecto";
+    private const string TABLA = "fuente";
+    private List<Dictionary<string, object>> fuentes = new List<Dictionary<string, object>>();
+    private string nuevaFuenteNombre = string.Empty;
+    private string fuenteEditarId = string.Empty;
+    private string fuenteEditarNombre = string.Empty;
+    private int nuevaFuenteId;
+    private string? errorMensaje = null;
+    private bool cargando = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ObtenerFuentes();
+    }
+
+    private async Task ObtenerFuentes()
+    {
+        cargando = true;
+        errorMensaje = null;
+        
+        try
+        {
+            var resultado = await servicioEntidad.ObtenerTodosAsync(PROYECTO, TABLA);
+            fuentes = resultado?.Count > 0 ? resultado : new List<Dictionary<string, object>>();
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error al cargar las fuentes: {ex.Message}";
+            fuentes = new List<Dictionary<string, object>>();
+        }
+        finally
+        {
+            cargando = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task CrearFuente()
+    {
+        errorMensaje = null;
+
+        try
+        {
+            var nuevaFuente = new Dictionary<string, object>
+            {
+                { "nombre", nuevaFuenteNombre }
+            };
+
+            bool resultado = await servicioEntidad.CrearAsync(PROYECTO, TABLA, nuevaFuente);
+            
+            if (resultado)
+            {
+                nuevaFuenteNombre = string.Empty;
+                await ObtenerFuentes();
+            }
+            else
+            {
+                errorMensaje = "Error al crear la fuente. Intente nuevamente.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error crítico: {ex.Message}";
+        }
+    }
+
+    private void IniciarEdicion(Dictionary<string, object> fuente)
+    {
+        fuenteEditarId = fuente["id"].ToString();
+        fuenteEditarNombre = fuente["nombre"].ToString();
+    }
+
+    private void CancelarEdicion()
+    {
+        fuenteEditarId = string.Empty;
+        fuenteEditarNombre = string.Empty;
+    }
+
+   private async Task GuardarEdicion(Dictionary<string, object> fuente)
+{
+    try
+    {
+        var fuenteActualizada = new Dictionary<string, object>
+        {
+            { "nombre", fuenteEditarNombre } // Se omite "id" para no modificarlo
+        };
+
+        bool resultado = await servicioEntidad.ActualizarAsync(
+            PROYECTO, 
+            TABLA, 
+            "id", 
+            fuente["id"].ToString(), // Se usa solo como clave para actualizar
+            fuenteActualizada
+        );
+
+        if (resultado)
+        {
+            await ObtenerFuentes();
+            CancelarEdicion();
+        }
+        else
+        {
+            errorMensaje = "Error al actualizar la fuente.";
+        }
+    }
+    catch (Exception ex)
+    {
+        errorMensaje = $"Error de actualización: {ex.Message}";
+    }
+}
+
+    private async Task EliminarFuente(Dictionary<string, object> fuente)
+    {
+        bool confirmar = await JSRuntime.InvokeAsync<bool>("confirm", 
+            $"¿Está seguro de eliminar la fuente '{fuente["nombre"]}'?");
+        
+        if (!confirmar) return;
+
+        try
+        {
+            bool resultado = await servicioEntidad.EliminarAsync(
+                PROYECTO, 
+                TABLA, 
+                "id", 
+                fuente["id"].ToString()
+            );
+
+            if (resultado)
+            {
+                await ObtenerFuentes();
+            }
+            else
+            {
+                errorMensaje = "Error al eliminar la fuente.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error de eliminación: {ex.Message}";
+        }
+    }
+}

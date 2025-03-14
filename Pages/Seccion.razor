@@ -1,0 +1,199 @@
+@page "/Seccion"
+@using System.Collections.Generic
+@using System.Text.Json
+@using Services
+@inject ServicioEntidad servicioEntidad
+@inject NavigationManager navegacionManager
+@inject IJSRuntime JSRuntime
+
+<h3>Secciones</h3>
+
+<div>
+    <input @bind="nuevaSeccionId" placeholder="ID de la seccion" />
+    <input @bind="nuevaSeccionNombre" placeholder="Nombre de la seccion" />
+    <button class="btn-success" @onclick="CrearSeccion">Crear</button>
+</div>
+
+@if (errorMensaje != null)
+{
+    <div class="alert alert-danger">@errorMensaje</div>
+}
+
+@if (cargando)
+{
+    <div>Cargando secciones...</div>
+}
+else
+{
+    <ul class="list-group mt-3">
+        @foreach (var seccion in secciones)
+        {
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                @if (seccionEditarId == seccion["id"].ToString())
+                {
+                    <div class="d-flex gap-2">
+                        <input @bind="seccionEditarNombre" class="form-control" />
+                        <button class="btn btn-sm btn-success" @onclick="() => GuardarEdicion(seccion)">Guardar</button>
+                        <button class="btn btn-sm btn-secondary" @onclick="CancelarEdicion">Cancelar</button>
+                    </div>
+                }
+                else
+                {
+                    <div>
+                        <span class="fw-bold">#@seccion["id"]</span> - @seccion["nombre"]
+                    </div>
+                    <div>
+                        <button class="btn btn-sm btn-primary" @onclick="() => IniciarEdicion(seccion)">Editar</button>
+                        <button class="btn btn-sm btn-danger" @onclick="() => EliminarSeccion(seccion)">Eliminar</button>
+                    </div>
+                }
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    private const string PROYECTO = "proyecto";
+    private const string TABLA = "seccion";
+    private List<Dictionary<string, object>> secciones = new List<Dictionary<string, object>>();
+    private string nuevaSeccionId = string.Empty;
+    private string nuevaSeccionNombre = string.Empty;
+    private string seccionEditarId = string.Empty;
+    private string seccionEditarNombre = string.Empty;
+    private string? errorMensaje = null;
+    private bool cargando = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ObtenerSecciones();
+    }
+
+    private async Task ObtenerSecciones()
+    {
+        cargando = true;
+        errorMensaje = null;
+        
+        try
+        {
+            var resultado = await servicioEntidad.ObtenerTodosAsync(PROYECTO, TABLA);
+            secciones = resultado?.Count > 0 ? resultado : new List<Dictionary<string, object>>();
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error al cargar las secciones: {ex.Message}";
+            secciones = new List<Dictionary<string, object>>();
+        }
+        finally
+        {
+            cargando = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task CrearSeccion()
+    {
+        errorMensaje = null;
+
+        try
+        {
+            var nuevaSeccion = new Dictionary<string, object>
+            {
+                { "id", nuevaSeccionId }, // Usa el ID proporcionado por el usuario
+                { "nombre", nuevaSeccionNombre }
+            };
+
+            bool resultado = await servicioEntidad.CrearAsync(PROYECTO, TABLA, nuevaSeccion);
+            
+            if (resultado)
+            {
+                nuevaSeccionId = string.Empty;
+                nuevaSeccionNombre = string.Empty;
+                await ObtenerSecciones();
+            }
+            else
+            {
+                errorMensaje = "Error al crear la seccion. Intente nuevamente.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error crítico: {ex.Message}";
+        }
+    }
+
+    private void IniciarEdicion(Dictionary<string, object> seccion)
+    {
+        seccionEditarId = seccion["id"].ToString();
+        seccionEditarNombre = seccion["nombre"].ToString();
+    }
+
+    private void CancelarEdicion()
+    {
+        seccionEditarId = string.Empty;
+        seccionEditarNombre = string.Empty;
+    }
+
+    private async Task GuardarEdicion(Dictionary<string, object> seccion)
+    {
+        try
+        {
+            var seccionActualizada = new Dictionary<string, object>
+            {
+                { "nombre", seccionEditarNombre } // Se omite "id" para no modificarlo
+            };
+
+            bool resultado = await servicioEntidad.ActualizarAsync(
+                PROYECTO, 
+                TABLA, 
+                "id", 
+                seccion["id"].ToString(), // Se usa solo como clave para actualizar
+                seccionActualizada
+            );
+
+            if (resultado)
+            {
+                await ObtenerSecciones();
+                CancelarEdicion();
+            }
+            else
+            {
+                errorMensaje = "Error al actualizar la seccion.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error de actualización: {ex.Message}";
+        }
+    }
+
+    private async Task EliminarSeccion(Dictionary<string, object> seccion)
+    {
+        bool confirmar = await JSRuntime.InvokeAsync<bool>("confirm", 
+            $"¿Está seguro de eliminar la seccion '{seccion["nombre"]}'?");
+        
+        if (!confirmar) return;
+
+        try
+        {
+            bool resultado = await servicioEntidad.EliminarAsync(
+                PROYECTO, 
+                TABLA, 
+                "id", 
+                seccion["id"].ToString()
+            );
+
+            if (resultado)
+            {
+                await ObtenerSecciones();
+            }
+            else
+            {
+                errorMensaje = "Error al eliminar la seccion.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error de eliminación: {ex.Message}";
+        }
+    }
+}

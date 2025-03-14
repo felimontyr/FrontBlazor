@@ -1,129 +1,195 @@
-@page "/frecuencia"  
-@using System.Collections.Generic  
-@using System.Text.Json  
-@using Services  
-@inject ServicioEntidad servicioEntidad  
-@inject NavigationManager navegacionManager  
+@page "/Frecuencia"
+@using System.Collections.Generic
+@using System.Text.Json
+@using Services
+@inject ServicioEntidad servicioEntidad
+@inject NavigationManager navegacionManager
+@inject IJSRuntime JSRuntime
 
-<PageTitle>Lista de Frecuencias</PageTitle>  
+<h3>Frecuencias</h3>
 
-<h1>Frecuencias</h1>  
+<div>
+    <input @bind="nuevaFrecuenciaNombre" placeholder="Nombre de la frecuencia" />
+    <button class="btn-success" @onclick="CrearFrecuencia">Crear</button>
+</div>
 
-<div class="mb-3">  
-    <button class="btn btn-primary" disabled>Crear Nuevo (Próximamente)</button>  
-</div>  
+@if (errorMensaje != null)
+{
+    <div class="alert alert-danger">@errorMensaje</div>
+}
 
-@if (cargando)  
-{  
-    <p><em>Cargando...</em></p>  
-}  
-else if (frecuencias == null || frecuencias.Count == 0)  
-{  
-    <p>No hay frecuencias disponibles.</p>  
-}  
-else  
-{  
-    <div class="table-responsive">  
-        <table class="table table-striped">  
-            <thead>  
-                <tr>  
-                    <th>ID</th>  
-                    <th>Nombre</th>  
-                </tr>  
-            </thead>  
-            <tbody>  
-                @foreach (var frecuencia in frecuencias)  
-                {  
-                    <tr>  
-                        <td>@ObtenerValor(frecuencia, "id")</td>  
-                        <td>@ObtenerValor(frecuencia, "nombre")</td>  
-                    </tr>  
-                }  
-            </tbody>  
-        </table>  
-    </div>  
-}  
+@if (cargando)
+{
+    <div>Cargando frecuencias...</div>
+}
+else
+{
+    <ul class="list-group mt-3">
+        @foreach (var frecuencia in frecuencias)
+        {
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                @if (frecuenciaEditarId == frecuencia["id"].ToString())
+                {
+                    <div class="d-flex gap-2">
+                        <input @bind="frecuenciaEditarNombre" class="form-control" />
+                        <button class="btn btn-sm btn-success" @onclick="() => GuardarEdicion(frecuencia)">Guardar</button>
+                        <button class="btn btn-sm btn-secondary" @onclick="CancelarEdicion">Cancelar</button>
+                    </div>
+                }
+                else
+                {
+                    <div>
+                        <span class="fw-bold">#@frecuencia["id"]</span> - @frecuencia["nombre"]
+                    </div>
+                    <div>
+                        <button class="btn btn-sm btn-primary" @onclick="() => IniciarEdicion(frecuencia)">Editar</button>
+                        <button class="btn btn-sm btn-danger" @onclick="() => EliminarFrecuencia(frecuencia)">Eliminar</button>
+                    </div>
+                }
+            </li>
+        }
+    </ul>
+}
 
-@if (errorMensaje != null)  
-{  
-    <div class="alert alert-danger">  
-        Error: @errorMensaje  
-    </div>  
-}  
+@code {
+    private const string PROYECTO = "proyecto";
+    private const string TABLA = "frecuencia";
+    private List<Dictionary<string, object>> frecuencias = new List<Dictionary<string, object>>();
+    private string nuevaFrecuenciaNombre = string.Empty;
+    private string frecuenciaEditarId = string.Empty;
+    private string frecuenciaEditarNombre = string.Empty;
+    private string? errorMensaje = null;
+    private bool cargando = true;
 
-@code {  
-    // Lista para almacenar las frecuencias que se obtienen de la API  
-    private List<Dictionary<string, object>> frecuencias = new List<Dictionary<string, object>>();  
-    
-    // Bandera para indicar si se están cargando los datos  
-    private bool cargando = true;  
-    
-    // Variable para almacenar mensajes de error  
-    private string? errorMensaje = null;  
-    
-    // Constantes para los parámetros de la API  
-    private const string PROYECTO = "proyecto";  
-    private const string TABLA = "frecuencia";  
+    protected override async Task OnInitializedAsync()
+    {
+        await ObtenerFrecuencias();
+    }
 
-    // Método que se ejecuta cuando se inicializa el componente  
-    protected override async Task OnInitializedAsync()  
-    {  
-        // Llamar al método para cargar las frecuencias  
-        await CargarFrecuencias();  
-    }  
-
-    // Método asíncrono para cargar las frecuencias desde la API  
-    private async Task CargarFrecuencias()  
-    {  
-        // Establecer la bandera de carga en verdadero  
-        cargando = true;  
-        // Limpiar cualquier mensaje de error previo  
-        errorMensaje = null;  
+    private async Task ObtenerFrecuencias()
+    {
+        cargando = true;
+        errorMensaje = null;
         
-        try  
-        {  
-            // Obtener todas las frecuencias usando el servicio de entidades  
-            var resultado = await servicioEntidad.ObtenerTodosAsync(PROYECTO, TABLA);  
-            
-            // Si la lista no es null, asignarla a la variable frecuencias  
-            if (resultado != null)  
-            {  
-                frecuencias = resultado;  
-            }  
-            else  
-            {  
-                // Si es null, inicializar como lista vacía para evitar errores  
-                frecuencias = new List<Dictionary<string, object>>();  
-            }  
-        }  
-        catch (Exception ex)  
-        {  
-            // En caso de error, guardar el mensaje y crear lista vacía  
-            errorMensaje = $"Error al cargar frecuencias: {ex.Message}";  
-            frecuencias = new List<Dictionary<string, object>>();  
-        }  
-        finally  
-        {  
-            // Establecer la bandera de carga en falso una vez finalizada la operación  
-            cargando = false;  
-        }  
-    }  
+        try
+        {
+            var resultado = await servicioEntidad.ObtenerTodosAsync(PROYECTO, TABLA);
+            frecuencias = resultado?.Count > 0 ? resultado : new List<Dictionary<string, object>>();
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error al cargar las frecuencias: {ex.Message}";
+            frecuencias = new List<Dictionary<string, object>>();
+        }
+        finally
+        {
+            cargando = false;
+            StateHasChanged();
+        }
+    }
 
-    // Método para obtener un valor específico de un diccionario de manera segura  
-    private string ObtenerValor(Dictionary<string, object> diccionario, string clave)  
-    {  
-        // Verificar si el diccionario es null  
-        if (diccionario == null)  
-            return string.Empty;  
+    private async Task CrearFrecuencia()
+    {
+        errorMensaje = null;
+
+        try
+        {
+            var nuevaFrecuencia = new Dictionary<string, object>
+            {
+                { "nombre", nuevaFrecuenciaNombre }
+            };
+
+            bool resultado = await servicioEntidad.CrearAsync(PROYECTO, TABLA, nuevaFrecuencia);
             
-        // Verificar si el diccionario contiene la clave  
-        if (diccionario.TryGetValue(clave, out var valor))  
-        {  
-            // Devolver el valor como cadena, o cadena vacía si es null  
-            return valor?.ToString() ?? string.Empty;  
-        }  
+            if (resultado)
+            {
+                nuevaFrecuenciaNombre = string.Empty;
+                await ObtenerFrecuencias();
+            }
+            else
+            {
+                errorMensaje = "Error al crear la frecuencia. Intente nuevamente.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error crítico: {ex.Message}";
+        }
+    }
+
+    private void IniciarEdicion(Dictionary<string, object> frecuencia)
+    {
+        frecuenciaEditarId = frecuencia["id"].ToString();
+        frecuenciaEditarNombre = frecuencia["nombre"].ToString();
+    }
+
+    private void CancelarEdicion()
+    {
+        frecuenciaEditarId = string.Empty;
+        frecuenciaEditarNombre = string.Empty;
+    }
+
+   private async Task GuardarEdicion(Dictionary<string, object> frecuencia)
+    {
+        try
+        {
+            var frecuenciaActualizada = new Dictionary<string, object>
+            {
+                { "nombre", frecuenciaEditarNombre } // Se omite "id" para no modificarlo
+            };
+
+            bool resultado = await servicioEntidad.ActualizarAsync(
+                PROYECTO, 
+                TABLA, 
+                "id", 
+                frecuencia["id"].ToString(), // Se usa solo como clave para actualizar
+                frecuenciaActualizada
+            );
+
+            if (resultado)
+            {
+                await ObtenerFrecuencias();
+                CancelarEdicion();
+            }
+            else
+            {
+                errorMensaje = "Error al actualizar la frecuencia.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error de actualización: {ex.Message}";
+        }
+    }
+
+    private async Task EliminarFrecuencia(Dictionary<string, object> frecuencia)
+    {
+        bool confirmar = await JSRuntime.InvokeAsync<bool>("confirm", 
+            $"¿Está seguro de eliminar la frecuencia '{frecuencia["nombre"]}'?");
         
-        // Si la clave no existe, devolver cadena vacía  
-        return string.Empty;  
-    }  
+        if (!confirmar) return;
+
+        try
+        {
+            bool resultado = await servicioEntidad.EliminarAsync(
+                PROYECTO, 
+                TABLA, 
+                "id", 
+                frecuencia["id"].ToString()
+            );
+
+            if (resultado)
+            {
+                await ObtenerFrecuencias();
+            }
+            else
+            {
+                errorMensaje = "Error al eliminar la frecuencia.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error de eliminación: {ex.Message}";
+        }
+    }
 }

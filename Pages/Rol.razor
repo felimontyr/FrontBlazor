@@ -1,0 +1,195 @@
+@page "/Rol"
+@using System.Collections.Generic
+@using System.Text.Json
+@using Services
+@inject ServicioEntidad servicioEntidad
+@inject NavigationManager navegacionManager
+@inject IJSRuntime JSRuntime
+
+<h3>Roles</h3>
+
+<div>
+    <input @bind="nuevoRolNombre" placeholder="Nombre del rol" />
+    <button class="btn-success" @onclick="CrearRol">Crear</button>
+</div>
+
+@if (errorMensaje != null)
+{
+    <div class="alert alert-danger">@errorMensaje</div>
+}
+
+@if (cargando)
+{
+    <div>Cargando roles...</div>
+}
+else
+{
+    <ul class="list-group mt-3">
+        @foreach (var rol in roles)
+        {
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                @if (rolEditarId == rol["id"].ToString())
+                {
+                    <div class="d-flex gap-2">
+                        <input @bind="rolEditarNombre" class="form-control" />
+                        <button class="btn btn-sm btn-success" @onclick="() => GuardarEdicion(rol)">Guardar</button>
+                        <button class="btn btn-sm btn-secondary" @onclick="CancelarEdicion">Cancelar</button>
+                    </div>
+                }
+                else
+                {
+                    <div>
+                        <span class="fw-bold">#@rol["id"]</span> - @rol["nombre"]
+                    </div>
+                    <div>
+                        <button class="btn btn-sm btn-primary" @onclick="() => IniciarEdicion(rol)">Editar</button>
+                        <button class="btn btn-sm btn-danger" @onclick="() => EliminarRol(rol)">Eliminar</button>
+                    </div>
+                }
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    private const string PROYECTO = "proyecto";
+    private const string TABLA = "rol";
+    private List<Dictionary<string, object>> roles = new List<Dictionary<string, object>>();
+    private string nuevoRolNombre = string.Empty;
+    private string rolEditarId = string.Empty;
+    private string rolEditarNombre = string.Empty;
+    private string? errorMensaje = null;
+    private bool cargando = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ObtenerRoles();
+    }
+
+    private async Task ObtenerRoles()
+    {
+        cargando = true;
+        errorMensaje = null;
+        
+        try
+        {
+            var resultado = await servicioEntidad.ObtenerTodosAsync(PROYECTO, TABLA);
+            roles = resultado?.Count > 0 ? resultado : new List<Dictionary<string, object>>();
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error al cargar los roles: {ex.Message}";
+            roles = new List<Dictionary<string, object>>();
+        }
+        finally
+        {
+            cargando = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task CrearRol()
+    {
+        errorMensaje = null;
+
+        try
+        {
+            var nuevoRol = new Dictionary<string, object>
+            {
+                { "nombre", nuevoRolNombre }
+            };
+
+            bool resultado = await servicioEntidad.CrearAsync(PROYECTO, TABLA, nuevoRol);
+            
+            if (resultado)
+            {
+                nuevoRolNombre = string.Empty;
+                await ObtenerRoles();
+            }
+            else
+            {
+                errorMensaje = "Error al crear el rol. Intente nuevamente.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error crítico: {ex.Message}";
+        }
+    }
+
+    private void IniciarEdicion(Dictionary<string, object> rol)
+    {
+        rolEditarId = rol["id"].ToString();
+        rolEditarNombre = rol["nombre"].ToString();
+    }
+
+    private void CancelarEdicion()
+    {
+        rolEditarId = string.Empty;
+        rolEditarNombre = string.Empty;
+    }
+
+    private async Task GuardarEdicion(Dictionary<string, object> rol)
+    {
+        try
+        {
+            var rolActualizado = new Dictionary<string, object>
+            {
+                { "nombre", rolEditarNombre } // Se omite "id" para no modificarlo
+            };
+
+            bool resultado = await servicioEntidad.ActualizarAsync(
+                PROYECTO, 
+                TABLA, 
+                "id", 
+                rol["id"].ToString(), // Se usa solo como clave para actualizar
+                rolActualizado
+            );
+
+            if (resultado)
+            {
+                await ObtenerRoles();
+                CancelarEdicion();
+            }
+            else
+            {
+                errorMensaje = "Error al actualizar el rol.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error de actualización: {ex.Message}";
+        }
+    }
+
+    private async Task EliminarRol(Dictionary<string, object> rol)
+    {
+        bool confirmar = await JSRuntime.InvokeAsync<bool>("confirm", 
+            $"¿Está seguro de eliminar el rol '{rol["nombre"]}'?");
+        
+        if (!confirmar) return;
+
+        try
+        {
+            bool resultado = await servicioEntidad.EliminarAsync(
+                PROYECTO, 
+                TABLA, 
+                "id", 
+                rol["id"].ToString()
+            );
+
+            if (resultado)
+            {
+                await ObtenerRoles();
+            }
+            else
+            {
+                errorMensaje = "Error al eliminar el rol.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error de eliminación: {ex.Message}";
+        }
+    }
+}

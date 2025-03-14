@@ -1,0 +1,195 @@
+@page "/Sentido"
+@using System.Collections.Generic
+@using System.Text.Json
+@using Services
+@inject ServicioEntidad servicioEntidad
+@inject NavigationManager navegacionManager
+@inject IJSRuntime JSRuntime
+
+<h3>Sentidos</h3>
+
+<div>
+    <input @bind="nuevoSentidoNombre" placeholder="Nombre del sentido" />
+    <button class="btn-success" @onclick="CrearSentido">Crear</button>
+</div>
+
+@if (errorMensaje != null)
+{
+    <div class="alert alert-danger">@errorMensaje</div>
+}
+
+@if (cargando)
+{
+    <div>Cargando sentidos...</div>
+}
+else
+{
+    <ul class="list-group mt-3">
+        @foreach (var sentido in sentidos)
+        {
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                @if (sentidoEditarId == sentido["id"].ToString())
+                {
+                    <div class="d-flex gap-2">
+                        <input @bind="sentidoEditarNombre" class="form-control" />
+                        <button class="btn btn-sm btn-success" @onclick="() => GuardarEdicion(sentido)">Guardar</button>
+                        <button class="btn btn-sm btn-secondary" @onclick="CancelarEdicion">Cancelar</button>
+                    </div>
+                }
+                else
+                {
+                    <div>
+                        <span class="fw-bold">#@sentido["id"]</span> - @sentido["nombre"]
+                    </div>
+                    <div>
+                        <button class="btn btn-sm btn-primary" @onclick="() => IniciarEdicion(sentido)">Editar</button>
+                        <button class="btn btn-sm btn-danger" @onclick="() => EliminarSentido(sentido)">Eliminar</button>
+                    </div>
+                }
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    private const string PROYECTO = "proyecto";
+    private const string TABLA = "sentido";
+    private List<Dictionary<string, object>> sentidos = new List<Dictionary<string, object>>();
+    private string nuevoSentidoNombre = string.Empty;
+    private string sentidoEditarId = string.Empty;
+    private string sentidoEditarNombre = string.Empty;
+    private string? errorMensaje = null;
+    private bool cargando = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ObtenerSentidos();
+    }
+
+    private async Task ObtenerSentidos()
+    {
+        cargando = true;
+        errorMensaje = null;
+        
+        try
+        {
+            var resultado = await servicioEntidad.ObtenerTodosAsync(PROYECTO, TABLA);
+            sentidos = resultado?.Count > 0 ? resultado : new List<Dictionary<string, object>>();
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error al cargar los sentidos: {ex.Message}";
+            sentidos = new List<Dictionary<string, object>>();
+        }
+        finally
+        {
+            cargando = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task CrearSentido()
+    {
+        errorMensaje = null;
+
+        try
+        {
+            var nuevoSentido = new Dictionary<string, object>
+            {
+                { "nombre", nuevoSentidoNombre }
+            };
+
+            bool resultado = await servicioEntidad.CrearAsync(PROYECTO, TABLA, nuevoSentido);
+            
+            if (resultado)
+            {
+                nuevoSentidoNombre = string.Empty;
+                await ObtenerSentidos();
+            }
+            else
+            {
+                errorMensaje = "Error al crear el sentido. Intente nuevamente.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error crítico: {ex.Message}";
+        }
+    }
+
+    private void IniciarEdicion(Dictionary<string, object> sentido)
+    {
+        sentidoEditarId = sentido["id"].ToString();
+        sentidoEditarNombre = sentido["nombre"].ToString();
+    }
+
+    private void CancelarEdicion()
+    {
+        sentidoEditarId = string.Empty;
+        sentidoEditarNombre = string.Empty;
+    }
+
+    private async Task GuardarEdicion(Dictionary<string, object> sentido)
+    {
+        try
+        {
+            var sentidoActualizado = new Dictionary<string, object>
+            {
+                { "nombre", sentidoEditarNombre } // Se omite "id" para no modificarlo
+            };
+
+            bool resultado = await servicioEntidad.ActualizarAsync(
+                PROYECTO, 
+                TABLA, 
+                "id", 
+                sentido["id"].ToString(), // Se usa solo como clave para actualizar
+                sentidoActualizado
+            );
+
+            if (resultado)
+            {
+                await ObtenerSentidos();
+                CancelarEdicion();
+            }
+            else
+            {
+                errorMensaje = "Error al actualizar el sentido.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error de actualización: {ex.Message}";
+        }
+    }
+
+    private async Task EliminarSentido(Dictionary<string, object> sentido)
+    {
+        bool confirmar = await JSRuntime.InvokeAsync<bool>("confirm", 
+            $"¿Está seguro de eliminar el sentido '{sentido["nombre"]}'?");
+        
+        if (!confirmar) return;
+
+        try
+        {
+            bool resultado = await servicioEntidad.EliminarAsync(
+                PROYECTO, 
+                TABLA, 
+                "id", 
+                sentido["id"].ToString()
+            );
+
+            if (resultado)
+            {
+                await ObtenerSentidos();
+            }
+            else
+            {
+                errorMensaje = "Error al eliminar el sentido.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error de eliminación: {ex.Message}";
+        }
+    }
+}
