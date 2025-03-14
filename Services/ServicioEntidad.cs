@@ -105,7 +105,6 @@ namespace FrontBlazor.Services  // Definir el espacio de nombres donde se ubicar
             try
             {
                 var url = $"{nombreProyecto}/{nombreTabla}";  // Construir la URL
-                
                 // Convertir el diccionario a JSON y prepararlo para enviarlo en la petición HTTP
                 var contenido = new StringContent(
                     JsonSerializer.Serialize(entidad),  // Convertir el diccionario a una cadena JSON

@@ -1,0 +1,166 @@
+@page "/unidadmedicion"
+@using System.Collections.Generic
+@using System.Text.Json
+@using Services
+@inject ServicioEntidad servicioEntidad
+@inject NavigationManager navegacionManager
+@inject IJSRuntime JSRuntime
+
+<h3>Unidades de Medición</h3>
+
+<div>
+    <input @bind="nuevaUnidadMedicionDescripcion" placeholder="Descripción de la unidad de medición" />
+    <button class="btn-success" @onclick="CrearUnidadMedicion">Crear</button>
+</div>
+
+@if (!string.IsNullOrEmpty(errorMensaje))
+{
+    <div style="color: red;">@errorMensaje</div>
+}
+
+<ul>
+    @foreach (var unidadMedicion in unidadesMedicion)
+    {
+        <li>
+            @if (unidadMedicionEditarId == unidadMedicion["id"].ToString())
+            {
+                <input @bind="unidadMedicionEditarDescripcion" />
+                <button class="btn-primary" @onclick="() => GuardarEdicion(unidadMedicion)">Guardar</button>
+                <button @onclick="CancelarEdicion">Cancelar</button>
+            }
+            else
+            {
+                @unidadMedicion["descripcion"]
+                <button class="btn-primary" @onclick="() => IniciarEdicion(unidadMedicion)">Editar</button>
+                <button class="btn btn-danger" @onclick="() => EliminarUnidadMedicion(unidadMedicion)">Eliminar</button>
+            }
+        </li>
+    }
+</ul>
+
+@code {
+    private const string PROYECTO = "proyecto";
+    private const string TABLA = "unidadmedicion"; // Cambia el nombre de la tabla
+    private List<Dictionary<string, object>> unidadesMedicion = new List<Dictionary<string, object>>();
+    private string nuevaUnidadMedicionDescripcion = string.Empty;
+    private string unidadMedicionEditarId = string.Empty;
+    private string unidadMedicionEditarDescripcion = string.Empty;
+    private string? errorMensaje = null;
+    private bool cargando = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ObtenerUnidadesMedicion();
+    }
+
+    private async Task ObtenerUnidadesMedicion()
+    {
+        cargando = true;
+        errorMensaje = null;
+
+        try
+        {
+            var resultado = await servicioEntidad.ObtenerTodosAsync(PROYECTO, TABLA);
+
+            if (resultado != null)
+            {
+                unidadesMedicion = resultado;
+            }
+            else
+            {
+                unidadesMedicion = new List<Dictionary<string, object>>();
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error al cargar las unidades de medición: {ex.Message}";
+            unidadesMedicion = new List<Dictionary<string, object>>();
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+    private async Task CrearUnidadMedicion()
+    {
+        errorMensaje = null;
+
+        // Validar que la descripción no esté vacía
+        if (string.IsNullOrWhiteSpace(nuevaUnidadMedicionDescripcion))
+        {
+            errorMensaje = "La descripción no puede estar vacía.";
+            return;
+        }
+
+        // Crear la nueva unidad de medición (sin incluir el ID)
+        var nuevaUnidadMedicion = new Dictionary<string, object>
+        {
+            { "descripcion", nuevaUnidadMedicionDescripcion }
+        };
+
+        // Enviar la solicitud al servidor
+        bool resultado = await servicioEntidad.CrearAsync(PROYECTO, TABLA, nuevaUnidadMedicion);
+        if (resultado)
+        {
+            Console.WriteLine("Unidad de medición creada con éxito.");
+            nuevaUnidadMedicionDescripcion = string.Empty; // Limpiar el campo de descripción
+            await ObtenerUnidadesMedicion(); // Recargar la lista de unidades de medición
+        }
+        else
+        {
+            errorMensaje = "Error al crear la unidad de medición.";
+        }
+    }
+
+    private void IniciarEdicion(Dictionary<string, object> unidadMedicion)
+    {
+        unidadMedicionEditarId = unidadMedicion["id"].ToString();
+        unidadMedicionEditarDescripcion = unidadMedicion["descripcion"].ToString();
+    }
+
+    private void CancelarEdicion()
+    {
+        unidadMedicionEditarId = string.Empty;
+        unidadMedicionEditarDescripcion = string.Empty;
+    }
+
+    private async Task GuardarEdicion(Dictionary<string, object> unidadMedicion)
+    {
+        var unidadMedicionActualizada = new Dictionary<string, object>
+        {
+            { "descripcion", unidadMedicionEditarDescripcion } // Solo actualizamos la descripción
+        };
+
+        bool resultado = await servicioEntidad.ActualizarAsync(PROYECTO, TABLA, "id", unidadMedicion["id"].ToString(), unidadMedicionActualizada);
+        if (resultado)
+        {
+            Console.WriteLine("Unidad de medición actualizada con éxito.");
+            unidadMedicionEditarId = string.Empty;
+            unidadMedicionEditarDescripcion = string.Empty;
+            await ObtenerUnidadesMedicion();
+        }
+        else
+        {
+            errorMensaje = "Error al actualizar la unidad de medición.";
+        }
+    }
+
+    private async Task EliminarUnidadMedicion(Dictionary<string, object> unidadMedicion)
+    {
+        bool confirmar = await JSRuntime.InvokeAsync<bool>("confirm", $"¿Estás seguro de eliminar la unidad de medición '{unidadMedicion["descripcion"]}'?");
+        if (confirmar)
+        {
+            bool resultado = await servicioEntidad.EliminarAsync(PROYECTO, TABLA, "id", unidadMedicion["id"].ToString());
+            if (resultado)
+            {
+                Console.WriteLine("Unidad de medición eliminada con éxito.");
+                await ObtenerUnidadesMedicion();
+            }
+            else
+            {
+                errorMensaje = "Error al eliminar la unidad de medición.";
+            }
+        }
+    }
+}
