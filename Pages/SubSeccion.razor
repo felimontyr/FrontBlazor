@@ -1,0 +1,172 @@
+@page "/subseccion"
+@using System.Collections.Generic
+@using System.Text.Json
+@using Services
+@inject ServicioEntidad servicioEntidad
+@inject NavigationManager navegacionManager
+@inject IJSRuntime JSRuntime
+
+<h3>Subsecciones</h3>
+
+<div>
+    <input @bind="nuevaSubseccionId" placeholder="ID de la subsección" type="number" />
+    <input @bind="nuevaSubseccionNombre" placeholder="Nombre de la subsección" />
+    <button class="btn-success" @onclick="CrearSubseccion">Crear</button>
+</div>
+
+<ul>
+    @foreach (var subseccion in subsecciones)
+    {
+        <li>
+            @if (subseccionEditarId == subseccion["id"].ToString())
+            {
+                <input @bind="subseccionEditarNombre" />
+                <button class="btn-primary" @onclick="() => GuardarEdicion(subseccion)">Guardar</button>
+                <button @onclick="CancelarEdicion">Cancelar</button>
+            }
+            else
+            {
+                @subseccion["nombre"]
+                <button class="btn-primary" @onclick="() => IniciarEdicion(subseccion)">Editar</button>
+                <button class="btn btn-danger" @onclick="() => EliminarSubseccion(subseccion)">Eliminar</button>
+            }
+        </li>
+    }
+</ul>
+
+@code {
+    private const string PROYECTO = "proyecto";
+    private const string TABLA = "subseccion";
+    private List<Dictionary<string, object>> subsecciones = new List<Dictionary<string, object>>();
+    private string nuevaSubseccionNombre = string.Empty;
+    private string subseccionEditarId = string.Empty;
+    private string subseccionEditarNombre = string.Empty;
+    private int nuevaSubseccionId;
+    protected override async Task OnInitializedAsync()
+    {
+        await ObtenerSubsecciones();
+    }
+
+    private string? errorMensaje = null;
+
+    private bool cargando = true;
+    private async Task ObtenerSubsecciones()
+    {
+        cargando = true;
+        errorMensaje = null;
+        
+        try
+        {
+            var resultado = await servicioEntidad.ObtenerTodosAsync(PROYECTO, TABLA);
+            
+            if (resultado != null)
+            {
+                subsecciones = resultado;
+            }
+            else
+            {
+                subsecciones = new List<Dictionary<string, object>>();
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error al cargar las subsecciones: {ex.Message}";
+            subsecciones = new List<Dictionary<string, object>>();
+        }
+        finally
+        {
+            cargando = false;
+        }
+        
+    }
+
+        private async Task CrearSubseccion()
+    {
+        errorMensaje = null;
+
+
+        if (nuevaSubseccionId <= 0)
+        {
+            errorMensaje = "El id debe ser un número positivo.";
+            return;
+        }
+
+        bool idDuplicado = subsecciones.Any(s => s["id"].ToString() == nuevaSubseccionId.ToString());
+        if (idDuplicado)
+        {
+            errorMensaje = "El ID ya existe. Por favor, ingrese un ID único.";
+            return;
+        }
+
+        var nuevaSubseccion = new Dictionary<string, object>
+        {
+            { "id", nuevaSubseccionId },
+            { "nombre", nuevaSubseccionNombre }
+        };
+
+        bool resultado = await servicioEntidad.CrearAsync(PROYECTO, TABLA, nuevaSubseccion);
+        if (resultado)
+        {
+            Console.WriteLine("Subsección creada con éxito.");
+            nuevaSubseccionId = 0; // Limpiar el campo de ID
+            nuevaSubseccionNombre = string.Empty; // Limpiar el campo de nombre
+            await ObtenerSubsecciones(); // Recargar la lista de subsecciones
+        }
+        else
+        {
+            errorMensaje = "Error al crear la subsección.";
+        }
+    }
+
+    private void IniciarEdicion(Dictionary<string, object> subseccion)
+    {
+        subseccionEditarId = subseccion["id"].ToString();
+        subseccionEditarNombre = subseccion["nombre"].ToString();
+    }
+
+    private void CancelarEdicion()
+    {
+        subseccionEditarId = string.Empty;
+        subseccionEditarNombre = string.Empty;
+    }
+
+    private async Task GuardarEdicion(Dictionary<string, object> subseccion)
+    {
+        var subseccionActualizada = new Dictionary<string, object>
+        {
+            { "id", subseccion["id"] },
+            { "nombre", subseccionEditarNombre }
+        };
+
+        bool resultado = await servicioEntidad.ActualizarAsync(PROYECTO, TABLA, "id", subseccion["id"].ToString(), subseccionActualizada);
+        if (resultado)
+        {
+            Console.WriteLine("Subsección actualizada con éxito.");
+            subseccionEditarId = string.Empty;
+            subseccionEditarNombre = string.Empty;
+            await ObtenerSubsecciones();
+        }
+        else
+        {
+            Console.WriteLine("Error al actualizar la subsección.");
+        }
+    }
+
+    private async Task EliminarSubseccion(Dictionary<string, object> subseccion)
+    {
+        bool confirmar = await JSRuntime.InvokeAsync<bool>("confirm", $"¿Estás seguro de eliminar la subsección '{subseccion["nombre"]}'?");
+        if (confirmar)
+        {
+            bool resultado = await servicioEntidad.EliminarAsync(PROYECTO, TABLA, "id", subseccion["id"].ToString());
+            if (resultado)
+            {
+                Console.WriteLine("Subsección eliminada con éxito.");
+                await ObtenerSubsecciones();
+            }
+            else
+            {
+                Console.WriteLine("Error al eliminar la subsección.");
+            }
+        }
+    }
+}
