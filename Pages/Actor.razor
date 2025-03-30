@@ -1,131 +1,238 @@
-@page "/actor"  
-@using System.Collections.Generic  
-@using System.Text.Json  
-@using Services  
-@inject ServicioEntidad servicioEntidad  
-@inject NavigationManager navegacionManager  
+@page "/Actor"
+@using System.Collections.Generic
+@using System.Text.Json
+@using Services
+@inject ServicioEntidad servicioEntidad
+@inject NavigationManager navegacionManager
+@inject IJSRuntime JSRuntime
 
-<PageTitle>Lista de Actores</PageTitle>  
+<h3>Actores</h3>
 
-<h1>Actores</h1>  
+<div>
+    <input @bind="nuevoActorId" placeholder="ID del actor" />
+    <input @bind="nuevoActorNombre" placeholder="Nombre del actor" />
+    <select @bind="nuevoActorTipo">
+        <option value="">Seleccione un tipo</option>
+        @foreach (var tipo in tiposActor)
+        {
+            <option value="@tipo["id"]">@tipo["nombre"]</option>
+        }
+    </select>
+    <button class="btn-success" @onclick="CrearActor">Crear</button>
+</div>
 
-<div class="mb-3">  
-    <button class="btn btn-primary" disabled>Crear Nuevo (Próximamente)</button>  
-</div>  
+@if (errorMensaje != null)
+{
+    <div class="alert alert-danger">@errorMensaje</div>
+}
 
-@if (cargando)  
-{  
-    <p><em>Cargando...</em></p>  
-}  
-else if (actores == null || actores.Count == 0)  
-{  
-    <p>No hay actores disponibles.</p>  
-}  
-else  
-{  
-    <div class="table-responsive">  
-        <table class="table table-striped">  
-            <thead>  
-                <tr>  
-                    <th>ID</th>  
-                    <th>Nombre</th>  
-                    <th>Tipo de Actor</th>  
-                </tr>  
-            </thead>  
-            <tbody>  
-                @foreach (var actor in actores)  
-                {  
-                    <tr>  
-                        <td>@ObtenerValor(actor, "id")</td>  
-                        <td>@ObtenerValor(actor, "nombre")</td>  
-                        <td>@ObtenerValor(actor, "fkidtipoactor")</td>  
-                    </tr>  
-                }  
-            </tbody>  
-        </table>  
-    </div>  
-}  
+@if (cargando)
+{
+    <div>Cargando actores...</div>
+}
+else
+{
+    <ul class="list-group mt-3">
+        @foreach (var actor in actores)
+        {
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                @if (actorEditarId == actor["id"].ToString())
+                {
+                    <div class="d-flex gap-2">
+                        <input @bind="actorEditarId" class="form-control" disabled />
+                        <input @bind="actorEditarNombre" class="form-control" />
+                        <select @bind="actorEditarTipo" class="form-control">
+                            <option value="">Seleccione un tipo</option>
+                            @foreach (var tipo in tiposActor)
+                            {
+                                <option value="@tipo["id"]" selected="@(actorEditarTipo == tipo["id"].ToString())">@tipo["nombre"]</option>
+                            }
+                        </select>
+                        <button class="btn btn-sm btn-success" @onclick="() => GuardarEdicion(actor)">Guardar</button>
+                        <button class="btn btn-sm btn-secondary" @onclick="CancelarEdicion">Cancelar</button>
+                    </div>
+                }
+                else
+                {
+                    <div>
+                        <span class="fw-bold">#@actor["id"]</span> - @actor["nombre"] (Tipo: @(actor.ContainsKey("fkidtipoactor") ? actor["fkidtipoactor"] : "N/A"))
+                    </div>
+                    <div>
+                        <button class="btn btn-sm btn-primary" @onclick="() => IniciarEdicion(actor)">Editar</button>
+                        <button class="btn btn-sm btn-danger" @onclick="() => EliminarActor(actor)">Eliminar</button>
+                    </div>
+                }
+            </li>
+        }
+    </ul>
+}
 
-@if (errorMensaje != null)  
-{  
-    <div class="alert alert-danger">  
-        Error: @errorMensaje  
-    </div>  
-}  
+@code {
+    private const string PROYECTO = "proyecto";
+    private const string TABLA = "actor";
+    private List<Dictionary<string, object>> actores = new List<Dictionary<string, object>>();
+    private List<Dictionary<string, object>> tiposActor = new List<Dictionary<string, object>>();
+    private string nuevoActorId = string.Empty;
+    private string nuevoActorNombre = string.Empty;
+    private string nuevoActorTipo = string.Empty;
+    private string actorEditarId = string.Empty;
+    private string actorEditarNombre = string.Empty;
+    private string actorEditarTipo = string.Empty;
+    private string? errorMensaje = null;
+    private bool cargando = true;
 
-@code {  
-    // Lista para almacenar los actores que se obtienen de la API  
-    private List<Dictionary<string, object>> actores = new List<Dictionary<string, object>>();  
-    
-    // Bandera para indicar si se están cargando los datos  
-    private bool cargando = true;  
-    
-    // Variable para almacenar mensajes de error  
-    private string? errorMensaje = null;  
-    
-    // Constantes para los parámetros de la API  
-    private const string PROYECTO = "proyecto";  
-    private const string TABLA = "actor";  
+    protected override async Task OnInitializedAsync()
+    {
+        await ObtenerTiposActor();
+        await ObtenerActores();
+    }
 
-    // Método que se ejecuta cuando se inicializa el componente  
-    protected override async Task OnInitializedAsync()  
-    {  
-        // Llamar al método para cargar los actores  
-        await CargarActores();  
-    }  
+    private async Task ObtenerTiposActor()
+    {
+        try
+        {
+            tiposActor = await servicioEntidad.ObtenerTodosAsync(PROYECTO, "tipoactor");
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error al cargar los tipos de actor: {ex.Message}";
+        }
+    }
 
-    // Método asíncrono para cargar los actores desde la API  
-    private async Task CargarActores()  
-    {  
-        // Establecer la bandera de carga en verdadero  
-        cargando = true;  
-        // Limpiar cualquier mensaje de error previo  
-        errorMensaje = null;  
+    private async Task ObtenerActores()
+    {
+        cargando = true;
+        errorMensaje = null;
         
-        try  
-        {  
-            // Obtener todos los actores usando el servicio de entidades  
-            var resultado = await servicioEntidad.ObtenerTodosAsync(PROYECTO, TABLA);  
-            
-            // Si la lista no es null, asignarla a la variable actores  
-            if (resultado != null)  
-            {  
-                actores = resultado;  
-            }  
-            else  
-            {  
-                // Si es null, inicializar como lista vacía para evitar errores  
-                actores = new List<Dictionary<string, object>>();  
-            }  
-        }  
-        catch (Exception ex)  
-        {  
-            // En caso de error, guardar el mensaje y crear lista vacía  
-            errorMensaje = $"Error al cargar actores: {ex.Message}";  
-            actores = new List<Dictionary<string, object>>();  
-        }  
-        finally  
-        {  
-            // Establecer la bandera de carga en falso una vez finalizada la operación  
-            cargando = false;  
-        }  
-    }  
+        try
+        {
+            var resultado = await servicioEntidad.ObtenerTodosAsync(PROYECTO, TABLA);
+            actores = resultado?.Count > 0 ? resultado : new List<Dictionary<string, object>>();
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error al cargar los actores: {ex.Message}";
+            actores = new List<Dictionary<string, object>>();
+        }
+        finally
+        {
+            cargando = false;
+            StateHasChanged();
+        }
+    }
 
-    // Método para obtener un valor específico de un diccionario de manera segura  
-    private string ObtenerValor(Dictionary<string, object> diccionario, string clave)  
-    {  
-        // Verificar si el diccionario es null  
-        if (diccionario == null)  
-            return string.Empty;  
+    private async Task CrearActor()
+    {
+        errorMensaje = null;
+
+        try
+        {
+            var nuevoActor = new Dictionary<string, object>
+            {
+                { "id", nuevoActorId },
+                { "nombre", nuevoActorNombre },
+                { "fkidtipoactor", nuevoActorTipo }
+            };
+
+            bool resultado = await servicioEntidad.CrearAsync(PROYECTO, TABLA, nuevoActor);
             
-        // Verificar si el diccionario contiene la clave  
-        if (diccionario.TryGetValue(clave, out var valor))  
-        {  
-            // Devolver el valor como cadena, o cadena vacía si es null  
-            return valor?.ToString() ?? string.Empty;  
-        }  
+            if (resultado)
+            {
+                nuevoActorId = string.Empty;
+                nuevoActorNombre = string.Empty;
+                nuevoActorTipo = string.Empty;
+                await ObtenerActores();
+            }
+            else
+            {
+                errorMensaje = "Error al crear el actor. Intente nuevamente.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error crítico: {ex.Message}";
+        }
+    }
+
+    private void IniciarEdicion(Dictionary<string, object> actor)
+    {
+        actorEditarId = actor["id"].ToString();
+        actorEditarNombre = actor["nombre"].ToString();
+        actorEditarTipo = actor.ContainsKey("fkidtipoactor") ? actor["fkidtipoactor"].ToString() : string.Empty;
+    }
+
+    private void CancelarEdicion()
+    {
+        actorEditarId = string.Empty;
+        actorEditarNombre = string.Empty;
+        actorEditarTipo = string.Empty;
+    }
+
+    private async Task GuardarEdicion(Dictionary<string, object> actor)
+    {
+        try
+        {
+            var actorActualizado = new Dictionary<string, object>
+            {
+                { "nombre", actorEditarNombre },
+                { "fkidtipoactor", actorEditarTipo }
+            };
+
+            bool resultado = await servicioEntidad.ActualizarAsync(
+                PROYECTO, 
+                TABLA, 
+                "id", 
+                actor["id"].ToString(), 
+                actorActualizado
+            );
+
+            if (resultado)
+            {
+                await ObtenerActores();
+                CancelarEdicion();
+            }
+            else
+            {
+                errorMensaje = "Error al actualizar el actor.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error de actualización: {ex.Message}";
+        }
+    }
+
+    private async Task EliminarActor(Dictionary<string, object> actor)
+    {
+        bool confirmar = await JSRuntime.InvokeAsync<bool>("confirm", 
+            $"¿Está seguro de eliminar el actor '{actor["nombre"]}'?");
         
-        // Si la clave no existe, devolver cadena vacía  
-        return string.Empty;  
-    }  
+        if (!confirmar) return;
+
+        try
+        {
+            // Eliminar registros relacionados en otras tablas
+            await servicioEntidad.EliminarAsync(PROYECTO, "responsablesporindicador", "fkidresponsable", actor["id"].ToString());
+
+            bool resultado = await servicioEntidad.EliminarAsync(
+                PROYECTO, 
+                TABLA, 
+                "id", 
+                actor["id"].ToString()
+            );
+
+            if (resultado)
+            {
+                await ObtenerActores();
+            }
+            else
+            {
+                errorMensaje = "Error al eliminar el actor.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error de eliminación: {ex.Message}";
+        }
+    }
 }
