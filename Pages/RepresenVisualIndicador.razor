@@ -1,0 +1,156 @@
+@page "/represenvisualporindicador"
+@using System.Collections.Generic
+@using System.Text.Json
+@using Services
+@inject ServicioEntidad servicioEntidad
+@inject NavigationManager navegacionManager
+@inject IJSRuntime JSRuntime
+
+<h3>Representación Visual con Indicador</h3>
+
+@if (!string.IsNullOrEmpty(mensaje))
+{
+    <div class="alert alert-info">@mensaje</div>
+}
+
+<div class="mb-3">
+    <label>Indicador:</label>
+    <select class="form-select mb-2" @bind="nuevoIdIndicador">
+        <option value="">Seleccione un indicador</option>
+        @foreach (var indicador in indicadores)
+        {
+            <option value="@indicador["id"]">@indicador["nombre"]</option>
+        }
+    </select>
+
+    <label>Representación Visual:</label>
+    <select class="form-select mb-2" @bind="nuevoIdRepresenvisual">
+        <option value="">Seleccione una representación visual</option>
+        @foreach (var rep in represenvisuales)
+        {
+            <option value="@rep["id"]">@rep["nombre"]</option>
+        }
+    </select>
+
+    <button class="btn btn-success" @onclick="AsignarRelacion">Crear Relación</button>
+</div>
+
+<h4 class="mt-4">Relaciones existentes</h4>
+
+@if (relaciones.Count == 0)
+{
+    <p>No hay relaciones registradas.</p>
+}
+else
+{
+    <ul class="list-group">
+        @foreach (var relacion in relaciones)
+        {
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                <span>
+                    Indicador: @relacion["fkidindicador"] - Representación Visual: @represenvisuales.FirstOrDefault(r => r["id"].ToString() == relacion["fkidrepresenvisual"].ToString())?["nombre"]
+                </span>
+                <button class="btn btn-danger btn-sm" @onclick="() => EliminarRelacion(relacion)">Eliminar</button>
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    private const string PROYECTO = "proyecto";
+    private const string TABLA = "represenvisualporindicador";
+
+    private List<Dictionary<string, object>> indicadores = new();
+    private List<Dictionary<string, object>> represenvisuales = new();
+    private List<Dictionary<string, object>> relaciones = new();
+
+    private string nuevoIdIndicador = string.Empty;
+    private string nuevoIdRepresenvisual = string.Empty;
+    private string mensaje = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            indicadores = await servicioEntidad.ObtenerTodosAsync(PROYECTO, "indicador") ?? new();
+            represenvisuales = await servicioEntidad.ObtenerTodosAsync(PROYECTO, "represenvisual") ?? new();
+            await ObtenerRelaciones();
+        }
+        catch (Exception ex)
+        {
+            mensaje = $"Error al cargar datos iniciales: {ex.Message}";
+        }
+    }
+
+    private async Task ObtenerRelaciones()
+    {
+        relaciones = await servicioEntidad.ObtenerTodosAsync(PROYECTO, TABLA) ?? new();
+    }
+
+    private async Task AsignarRelacion()
+    {
+        mensaje = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(nuevoIdIndicador) || string.IsNullOrWhiteSpace(nuevoIdRepresenvisual))
+        {
+            mensaje = "Debe seleccionar un indicador y una representación visual.";
+            return;
+        }
+
+        if (relaciones.Any(r =>
+            r["fkidindicador"].ToString() == nuevoIdIndicador &&
+            r["fkidrepresenvisual"].ToString() == nuevoIdRepresenvisual))
+        {
+            mensaje = "La relación ya existe.";
+            return;
+        }
+
+        var parametros = new Dictionary<string, object>
+        {
+            { "nombreSP", "sp_insertar_represenvisualporindicador" },
+            { "fkidindicador", int.Parse(nuevoIdIndicador) },
+            { "fkidrepresenvisual", int.Parse(nuevoIdRepresenvisual) }
+        };
+
+        var resultado = await servicioEntidad.EjecutarProcedimientoAsync(PROYECTO, TABLA, "sp_insertar_represenvisualporindicador", parametros);
+
+        if (resultado != null)
+        {
+            mensaje = "Relación creada correctamente.";
+            nuevoIdIndicador = string.Empty;
+            nuevoIdRepresenvisual = string.Empty;
+            await ObtenerRelaciones();
+        }
+        else
+        {
+            mensaje = "Error al crear la relación.";
+        }
+    }
+
+    private async Task EliminarRelacion(Dictionary<string, object> relacion)
+    {
+        bool confirmar = await JSRuntime.InvokeAsync<bool>("confirm",
+            $"¿Deseas eliminar la relación de indicador {relacion["fkidindicador"]} con representación visual {relacion["fkidrepresenvisual"]}?");
+
+        if (!confirmar) return;
+
+        var parametros = new Dictionary<string, object>
+        {
+            { "nombreSP", "sp_eliminar_represenvisualporindicador" },
+            { "fkidindicador", int.Parse(relacion["fkidindicador"].ToString()!) },
+            { "fkidrepresenvisual", int.Parse(relacion["fkidrepresenvisual"].ToString()!) }
+        };
+
+        var resultado = await servicioEntidad.EjecutarProcedimientoAsync(PROYECTO, TABLA, "sp_eliminar_represenvisualporindicador", parametros);
+
+        if (resultado != null)
+        {
+            mensaje = "Relación eliminada correctamente.";
+            await ObtenerRelaciones();
+        }
+        else
+        {
+            mensaje = "Error al eliminar la relación.";
+        }
+    }
+}

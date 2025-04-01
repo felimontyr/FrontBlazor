@@ -1,0 +1,113 @@
+@page "/resultadoindicador"
+@using System.Collections.Generic
+@using System.Text.Json
+@using Services
+@inject ServicioEntidad servicioEntidad
+@inject NavigationManager navegacionManager
+@inject IJSRuntime JSRuntime
+
+<h3>Resultados por Indicador</h3>
+
+<div class="mb-3">
+    <input @bind="nuevoResultado" placeholder="Resultado" class="form-control mb-2" />
+    <input type="date" @bind="nuevaFecha" @bind:format="yyyy-MM-dd" />
+    <select class="form-select mb-2" @bind="nuevoIndicadorId">
+        <option value="">Seleccione un indicador</option>
+        @foreach (var indicador in indicadores)
+        {
+            <option value="@indicador["id"]">@indicador["nombre"]</option>
+        }
+    </select>
+    <button class="btn btn-success" @onclick="CrearResultado">Crear</button>
+</div>
+
+@if (!string.IsNullOrEmpty(mensaje))
+{
+    <div class="alert alert-info">@mensaje</div>
+}
+
+<ul class="list-group mt-4">
+    @foreach (var resultado in resultados)
+    {
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+            <div>
+                <span><strong>ID:</strong> @resultado["id"]</span> -
+                <span><strong>Resultado:</strong> @resultado["resultado"]</span> -
+                <span><strong>Fecha:</strong> @(((DateTime)resultado["fechacalculo"]).ToString("yyyy-MM-dd"))</span>
+                <span><strong>Indicador:</strong> @indicadores.FirstOrDefault(i => i["id"].ToString() == resultado["fkidindicador"].ToString())?["nombre"] ?? "N/A"</span>
+            </div>
+            <button class="btn btn-danger btn-sm" @onclick="() => EliminarResultado(resultado)">Eliminar</button>
+        </li>
+    }
+</ul>
+
+@code {
+    private const string PROYECTO = "proyecto";
+    private const string TABLA = "resultadoindicador";
+
+    private List<Dictionary<string, object>> resultados = new();
+    private List<Dictionary<string, object>> indicadores = new();
+
+    private string nuevoResultado = string.Empty;
+    private DateTime nuevaFecha = DateTime.Now;
+    private string nuevoIndicadorId = string.Empty;
+    private string mensaje = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        indicadores = await servicioEntidad.ObtenerTodosAsync(PROYECTO, "indicador") ?? new();
+        resultados = await servicioEntidad.ObtenerTodosAsync(PROYECTO, TABLA) ?? new();
+    }
+
+    private async Task CrearResultado()
+    {
+        mensaje = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(nuevoResultado) || string.IsNullOrWhiteSpace(nuevoIndicadorId))
+        {
+            mensaje = "Todos los campos son obligatorios.";
+            return;
+        }
+
+        var nuevo = new Dictionary<string, object>
+        {
+            { "resultado", nuevoResultado },
+            { "fechacalculo", nuevaFecha },
+            { "fkidindicador", int.Parse(nuevoIndicadorId) }
+        };
+
+        var creado = await servicioEntidad.CrearAsync(PROYECTO, TABLA, nuevo);
+
+        if (creado)
+        {
+            mensaje = "Resultado creado con éxito.";
+            nuevoResultado = string.Empty;
+            nuevaFecha = DateTime.Now;
+            nuevoIndicadorId = string.Empty;
+            resultados = await servicioEntidad.ObtenerTodosAsync(PROYECTO, TABLA) ?? new();
+        }
+        else
+        {
+            mensaje = "Error al crear el resultado.";
+        }
+    }
+
+    private async Task EliminarResultado(Dictionary<string, object> resultado)
+    {
+        bool confirmar = await JSRuntime.InvokeAsync<bool>("confirm", $"¿Eliminar resultado con ID {resultado["id"]}?");
+
+        if (!confirmar) return;
+
+        var eliminado = await servicioEntidad.EliminarAsync(PROYECTO, TABLA, "id", resultado["id"].ToString());
+
+        if (eliminado)
+        {
+            mensaje = "Resultado eliminado.";
+            resultados = await servicioEntidad.ObtenerTodosAsync(PROYECTO, TABLA) ?? new();
+        }
+        else
+        {
+            mensaje = "Error al eliminar.";
+        }
+    }
+}
