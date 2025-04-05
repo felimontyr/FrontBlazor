@@ -48,12 +48,13 @@ else
         {
             <li class="list-group-item d-flex justify-content-between align-items-center">
                 <span>
-                    Indicador: @relacion["fkidindicador"] - Representación Visual: @represenvisuales.FirstOrDefault(r => r["id"].ToString() == relacion["fkidrepresenvisual"].ToString())?["nombre"]
+                    Indicador: @indicadores.FirstOrDefault(i => i["id"].ToString() == relacion["fkidindicador"].ToString())?["nombre"] - Representación Visual: @represenvisuales.FirstOrDefault(r => r["id"].ToString() == relacion["fkidrepresenvisual"].ToString())?["nombre"]
                 </span>
                 <button class="btn btn-danger btn-sm" @onclick="() => EliminarRelacion(relacion)">Eliminar</button>
             </li>
         }
     </ul>
+    //Indicador: @relacion["fkidindicador"]
 }
 
 @code {

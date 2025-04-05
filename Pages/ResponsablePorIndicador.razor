@@ -1,0 +1,228 @@
+@page "/responsablesporindicador"
+@using System.Collections.Generic
+@using Services
+@inject ServicioEntidad servicioEntidad
+@inject IJSRuntime JSRuntime
+@inject NavigationManager navegacionManager
+@using System.Text.Json
+
+<h3>Asignar Responsable a Indicador</h3>
+
+@if (!string.IsNullOrEmpty(mensaje))
+{
+    <div class="alert alert-info">@mensaje</div>
+}
+
+<div class="mb-3">
+    <label>Responsable (Actor):</label>
+    <select class="form-select mb-2" @bind="nuevoResponsable">
+        <option value="">Seleccione un actor</option>
+        @foreach (var actor in actores)
+        {
+            <option value="@actor["id"]">@actor["nombre"]</option>
+        }
+    </select>
+
+    <label>Indicador:</label>
+    <select class="form-select mb-2" @bind="nuevoIndicadorId">
+        <option value="">Seleccione un indicador</option>
+        @foreach (var indicador in indicadores)
+        {
+            <option value="@indicador["id"]">@indicador["nombre"]</option>
+        }
+    </select>
+
+    <label>Fecha Asignación:</label>
+    <input type="date" class="form-control mb-3" @bind="nuevaFechaAsignacion" />
+
+    <button class="btn btn-success" @onclick="CrearRelacion">Asignar</button>
+</div>
+
+<h4>Relaciones actuales</h4>
+@if (relaciones.Count == 0)
+{
+    <p>No hay relaciones registradas.</p>
+}
+else
+{
+    <ul class="list-group">
+        @foreach (var relacion in relaciones)
+        {
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                <span>
+                    Actor: @actores.FirstOrDefault(a => a["id"].ToString() == relacion["fkidresponsable"].ToString())?["nombre"]
+                    - Indicador: @indicadores.FirstOrDefault(i => i["id"].ToString() == relacion["fkidindicador"].ToString())?["nombre"]
+                    - Fecha: @FormatFecha(relacion["fechaasignacion"])
+                </span>
+                <span>
+                    <button class="btn btn-primary btn-sm" @onclick="() => IniciarEdicion(relacion)">Editar</button>
+                    <button class="btn btn-danger btn-sm" @onclick="() => EliminarRelacion(relacion)">Eliminar</button>
+                </span>
+            </li>
+        }
+    </ul>
+}
+
+@if (editandoRelacion != null)
+{
+    <div class="mt-4">
+        <h5>Editar Fecha de Asignación</h5>
+        <label>Fecha Nueva:</label>
+        <input type="date" class="form-control mb-2" @bind="nuevaFechaEdicion" />
+        <button class="btn btn-success me-2" @onclick="GuardarEdicion">Guardar</button>
+        <button class="btn btn-secondary" @onclick="CancelarEdicion">Cancelar</button>
+    </div>
+}
+
+@code {
+    private const string PROYECTO = "proyecto";
+    private const string TABLA = "responsablesporindicador";
+
+    private List<Dictionary<string, object>> actores = new();
+    private List<Dictionary<string, object>> indicadores = new();
+    private List<Dictionary<string, object>> relaciones = new();
+
+    private string nuevoResponsable = string.Empty;
+    private string nuevoIndicadorId = string.Empty;
+    private DateTime nuevaFechaAsignacion = DateTime.Today;
+    private string mensaje = string.Empty;
+
+    private Dictionary<string, object>? editandoRelacion = null;
+    private DateTime nuevaFechaEdicion = DateTime.Today;
+
+    protected override async Task OnInitializedAsync()
+    {
+        actores = await servicioEntidad.ObtenerTodosAsync(PROYECTO, "actor") ?? new();
+        indicadores = await servicioEntidad.ObtenerTodosAsync(PROYECTO, "indicador") ?? new();
+        await ObtenerRelaciones();
+    }
+
+    private async Task ObtenerRelaciones()
+    {
+        relaciones = await servicioEntidad.ObtenerTodosAsync(PROYECTO, TABLA) ?? new();
+    }
+
+    private string FormatFecha(object? fecha)
+    {
+        if (fecha is DateTime dt)
+            return dt.ToString("yyyy-MM-dd");
+
+        if (DateTime.TryParse(fecha?.ToString(), out var parsed))
+            return parsed.ToString("yyyy-MM-dd");
+
+        return "Fecha inválida";
+    }
+
+    private async Task CrearRelacion()
+    {
+        mensaje = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(nuevoResponsable) || string.IsNullOrWhiteSpace(nuevoIndicadorId))
+        {
+            mensaje = "Debe seleccionar un actor y un indicador.";
+            return;
+        }
+
+        if (relaciones.Any(r =>
+            r["fkidresponsable"].ToString() == nuevoResponsable &&
+            r["fkidindicador"].ToString() == nuevoIndicadorId))
+        {
+            mensaje = "La relación ya existe.";
+            return;
+        }
+
+        try
+        {
+            var parametros = new Dictionary<string, object>
+            {
+                { "nombreSP", "sp_insertar_responsablesporindicador" },
+                { "fkidresponsable", nuevoResponsable },
+                { "fkidindicador", int.Parse(nuevoIndicadorId) },
+                { "fechaasignacion", nuevaFechaAsignacion.ToString("yyyy-MM-dd HH:mm:ss") }
+            };
+
+            var resultado = await servicioEntidad.EjecutarProcedimientoAsync(PROYECTO, TABLA, "sp_insertar_responsablesporindicador", parametros);
+
+            if (resultado != null)
+            {
+                mensaje = "Responsable asignado correctamente.";
+                nuevoResponsable = string.Empty;
+                nuevoIndicadorId = string.Empty;
+                nuevaFechaAsignacion = DateTime.Today;
+                await ObtenerRelaciones();
+            }
+            else
+            {
+                mensaje = "Error al crear la relación.";
+            }
+        }
+        catch (Exception ex)
+        {
+            mensaje = $"Error crítico: {ex.Message}";
+        }
+    }
+
+    private async Task EliminarRelacion(Dictionary<string, object> relacion)
+    {
+        bool confirmar = await JSRuntime.InvokeAsync<bool>("confirm",
+            $"¿Deseas eliminar la relación de {relacion["fkidresponsable"]} con indicador {relacion["fkidindicador"]}?");
+
+        if (!confirmar) return;
+
+        var parametros = new Dictionary<string, object>
+        {
+            { "nombreSP", "sp_eliminar_responsablesporindicador" },
+            { "fkidresponsable", relacion["fkidresponsable"].ToString() },
+            { "fkidindicador", int.Parse(relacion["fkidindicador"].ToString()) }
+        };
+
+        var resultado = await servicioEntidad.EjecutarProcedimientoAsync(PROYECTO, TABLA, "sp_eliminar_responsablesporindicador", parametros);
+
+        if (resultado != null)
+        {
+            mensaje = "Relación eliminada correctamente.";
+            await ObtenerRelaciones();
+        }
+        else
+        {
+            mensaje = "Error al eliminar la relación.";
+        }
+    }
+
+    private void IniciarEdicion(Dictionary<string, object> relacion)
+    {
+        editandoRelacion = relacion;
+        nuevaFechaEdicion = DateTime.Today;
+    }
+
+    private void CancelarEdicion()
+    {
+        editandoRelacion = null;
+    }
+
+    private async Task GuardarEdicion()
+    {
+        if (editandoRelacion == null) return;
+
+        var parametros = new Dictionary<string, object>
+        {
+            { "nombreSP", "sp_actualizar_fecha_responsablesporindicador" },
+            { "fkidresponsable", editandoRelacion["fkidresponsable"].ToString() },
+            { "fkidindicador", int.Parse(editandoRelacion["fkidindicador"].ToString()) },
+            { "fechaasignacion", nuevaFechaEdicion }
+        };
+
+        var resultado = await servicioEntidad.EjecutarProcedimientoAsync(PROYECTO, TABLA, "sp_actualizar_fecha_responsablesporindicador", parametros);
+
+        if (resultado != null)
+        {
+            mensaje = "Fecha actualizada correctamente.";
+            await ObtenerRelaciones();
+            CancelarEdicion();
+        }
+        else
+        {
+            mensaje = "Error al actualizar la fecha.";
+        }
+    }
+}

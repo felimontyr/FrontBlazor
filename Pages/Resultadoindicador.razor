@@ -10,7 +10,7 @@
 
 <div class="mb-3">
     <input @bind="nuevoResultado" placeholder="Resultado" class="form-control mb-2" />
-    <input type="date" @bind="nuevaFecha" @bind:format="yyyy-MM-dd" />
+    <input type="date" @bind="nuevaFecha" @bind:format="yyyy-MM-dd" class="form-control mb-2" />
     <select class="form-select mb-2" @bind="nuevoIndicadorId">
         <option value="">Seleccione un indicador</option>
         @foreach (var indicador in indicadores)
@@ -18,7 +18,7 @@
             <option value="@indicador["id"]">@indicador["nombre"]</option>
         }
     </select>
-    <button class="btn btn-success" @onclick="CrearResultado">Crear</button>
+    <button class="btn btn-success" @onclick="CrearResultado" disabled="@(!indicadores.Any())">Crear</button>
 </div>
 
 @if (!string.IsNullOrEmpty(mensaje))
@@ -29,14 +29,37 @@
 <ul class="list-group mt-4">
     @foreach (var resultado in resultados)
     {
-        <li class="list-group-item d-flex justify-content-between align-items-center">
-            <div>
-                <span><strong>ID:</strong> @resultado["id"]</span> -
-                <span><strong>Resultado:</strong> @resultado["resultado"]</span> -
-                <span><strong>Fecha:</strong> @(((DateTime)resultado["fechacalculo"]).ToString("yyyy-MM-dd"))</span>
-                <span><strong>Indicador:</strong> @indicadores.FirstOrDefault(i => i["id"].ToString() == resultado["fkidindicador"].ToString())?["nombre"] ?? "N/A"</span>
-            </div>
-            <button class="btn btn-danger btn-sm" @onclick="() => EliminarResultado(resultado)">Eliminar</button>
+        <li class="list-group-item d-flex justify-content-between align-items-center flex-column">
+            @if (editarId == resultado["id"].ToString())
+            {
+                <div class="w-100 d-flex flex-column gap-2">
+                    <input class="form-control" @bind="editarResultado" />
+                    <input type="date" class="form-control" @bind="editarFecha" />
+                    <select class="form-select" @bind="editarIndicadorId">
+                        <option value="">Seleccione un indicador</option>
+                        @foreach (var indicador in indicadores)
+                        {
+                            <option value="@indicador["id"]">@indicador["nombre"]</option>
+                        }
+                    </select>
+                    <div class="mt-2 d-flex gap-2">
+                        <button class="btn btn-success btn-sm" @onclick="() => GuardarEdicion(resultado)">Guardar</button>
+                        <button class="btn btn-secondary btn-sm" @onclick="CancelarEdicion">Cancelar</button>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div>
+                    <span><strong>Resultado:</strong> @resultado["resultado"]</span> -
+                    <span><strong>Fecha:</strong> @FormatFecha(resultado["fechacalculo"])</span> -
+                    <span><strong>Indicador:</strong> @indicadores.FirstOrDefault(i => i["id"].ToString() == resultado["fkidindicador"].ToString())?["nombre"]</span>
+                </div>
+                <div class="mt-2 d-flex gap-2">
+                    <button class="btn btn-primary btn-sm" @onclick="() => IniciarEdicion(resultado)">Editar</button>
+                    <button class="btn btn-danger btn-sm" @onclick="() => EliminarResultado(resultado)">Eliminar</button>
+                </div>
+            }
         </li>
     }
 </ul>
@@ -49,14 +72,35 @@
     private List<Dictionary<string, object>> indicadores = new();
 
     private string nuevoResultado = string.Empty;
-    private DateTime nuevaFecha = DateTime.Now;
+    private DateTime nuevaFecha = DateTime.Today;
     private string nuevoIndicadorId = string.Empty;
+
+    private string editarId = string.Empty;
+    private string editarResultado = string.Empty;
+    private DateTime editarFecha = DateTime.Today;
+    private string editarIndicadorId = string.Empty;
+
     private string mensaje = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
         indicadores = await servicioEntidad.ObtenerTodosAsync(PROYECTO, "indicador") ?? new();
         resultados = await servicioEntidad.ObtenerTodosAsync(PROYECTO, TABLA) ?? new();
+    }
+
+    private string FormatFecha(object? fecha)
+    {
+        if (fecha is DateTime dt)
+            return dt.ToString("yyyy-MM-dd");
+
+        if (fecha is JsonElement je && je.ValueKind == JsonValueKind.String &&
+            DateTime.TryParse(je.GetString(), out var parsedJson))
+            return parsedJson.ToString("yyyy-MM-dd");
+
+        if (DateTime.TryParse(fecha?.ToString(), out var parsed))
+            return parsed.ToString("yyyy-MM-dd");
+
+        return "Fecha inválida";
     }
 
     private async Task CrearResultado()
@@ -69,11 +113,23 @@
             return;
         }
 
+        if (!double.TryParse(nuevoResultado, out double resultadoNum))
+        {
+            mensaje = "El resultado debe ser un número válido.";
+            return;
+        }
+
+        if (!int.TryParse(nuevoIndicadorId, out int indicadorId))
+        {
+            mensaje = "Indicador no válido.";
+            return;
+        }
+
         var nuevo = new Dictionary<string, object>
         {
-            { "resultado", nuevoResultado },
+            { "resultado", resultadoNum },
             { "fechacalculo", nuevaFecha },
-            { "fkidindicador", int.Parse(nuevoIndicadorId) }
+            { "fkidindicador", indicadorId }
         };
 
         var creado = await servicioEntidad.CrearAsync(PROYECTO, TABLA, nuevo);
@@ -82,13 +138,74 @@
         {
             mensaje = "Resultado creado con éxito.";
             nuevoResultado = string.Empty;
-            nuevaFecha = DateTime.Now;
+            nuevaFecha = DateTime.Today;
             nuevoIndicadorId = string.Empty;
             resultados = await servicioEntidad.ObtenerTodosAsync(PROYECTO, TABLA) ?? new();
         }
         else
         {
             mensaje = "Error al crear el resultado.";
+        }
+    }
+
+    private void IniciarEdicion(Dictionary<string, object> resultado)
+    {
+        editarId = resultado["id"].ToString();
+        editarResultado = resultado["resultado"].ToString();
+        editarIndicadorId = resultado["fkidindicador"].ToString();
+
+        if (resultado["fechacalculo"] is DateTime fecha)
+            editarFecha = fecha;
+        else if (DateTime.TryParse(resultado["fechacalculo"]?.ToString(), out var parsed))
+            editarFecha = parsed;
+    }
+
+    private void CancelarEdicion()
+    {
+        editarId = string.Empty;
+        editarResultado = string.Empty;
+        editarFecha = DateTime.Today;
+        editarIndicadorId = string.Empty;
+    }
+
+    private async Task GuardarEdicion(Dictionary<string, object> resultado)
+    {
+        if (string.IsNullOrWhiteSpace(editarResultado) || string.IsNullOrWhiteSpace(editarIndicadorId))
+        {
+            mensaje = "Todos los campos son obligatorios.";
+            return;
+        }
+
+        if (!double.TryParse(editarResultado, out double resultadoNum))
+        {
+            mensaje = "El resultado debe ser un número válido.";
+            return;
+        }
+
+        if (!int.TryParse(editarIndicadorId, out int indicadorId))
+        {
+            mensaje = "Indicador no válido.";
+            return;
+        }
+
+        var actualizado = new Dictionary<string, object>
+        {
+            { "resultado", resultadoNum },
+            { "fechacalculo", editarFecha },
+            { "fkidindicador", indicadorId }
+        };
+
+        var exito = await servicioEntidad.ActualizarAsync(PROYECTO, TABLA, "id", editarId, actualizado);
+
+        if (exito)
+        {
+            mensaje = "Resultado actualizado correctamente.";
+            CancelarEdicion();
+            resultados = await servicioEntidad.ObtenerTodosAsync(PROYECTO, TABLA) ?? new();
+        }
+        else
+        {
+            mensaje = "Error al actualizar.";
         }
     }
 
