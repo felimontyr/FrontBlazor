@@ -1,0 +1,429 @@
+@page "/Indicador"
+@using System.Collections.Generic
+@using System.Text.Json
+@using Services
+@inject ServicioEntidad servicioEntidad
+@inject NavigationManager navegacionManager
+@inject IJSRuntime JSRuntime
+
+<h3>Indicadores</h3>
+
+<div class="mb-3">
+    <div class="row g-3">
+        <div class="col-md-2">
+            <input @bind="nuevoIndicadorCodigo" class="form-control" placeholder="Código" />
+        </div>
+        <div class="col-md-3">
+            <input @bind="nuevoIndicadorNombre" class="form-control" placeholder="Nombre" />
+        </div>
+        <div class="col-md-3">
+            <textarea @bind="nuevoIndicadorObjetivo" class="form-control" placeholder="Objetivo"></textarea>
+        </div>
+        <div class="col-md-3">
+            <textarea @bind="nuevoIndicadorAlcance" class="form-control" placeholder="Alcance"></textarea>
+        </div>
+        <div class="col-md-3">
+            <textarea @bind="nuevoIndicadorFormula" class="form-control" placeholder="Fórmula"></textarea>
+        </div>
+        <div class="col-md-2">
+            <select @bind="nuevoIndicadorTipo" class="form-select @(mostrarErrorTipo ? "is-invalid" : "")">
+                <option value="">Seleccione tipo</option>
+                @foreach (var tipo in tiposIndicador)
+                {
+                    <option value="@tipo.GetValueOrDefault("id", "")">@tipo.GetValueOrDefault("nombre", "Desconocido")</option>
+                }
+            </select>
+            @if (mostrarErrorTipo)
+            {
+                <div class="invalid-feedback">Seleccione un tipo válido</div>
+            }
+        </div>
+        <div class="col-md-2">
+            <select @bind="nuevoIndicadorUnidadMedicion" class="form-select @(mostrarErrorUnidad ? "is-invalid" : "")">
+                <option value="">Seleccione unidad</option>
+                @foreach (var unidad in unidadesMedicion)
+                {
+                    <option value="@unidad.GetValueOrDefault("id", "")">@unidad.GetValueOrDefault("nombre", "Desconocido")</option>
+                }
+            </select>
+            @if (mostrarErrorUnidad)
+            {
+                <div class="invalid-feedback">Seleccione una unidad válida</div>
+            }
+        </div>
+        <div class="col-md-2">
+            <input @bind="nuevoIndicadorMeta" class="form-control" placeholder="Meta" />
+        </div>
+        <div class="col-md-2">
+            <select @bind="nuevoIndicadorSentido" class="form-select @(mostrarErrorSentido ? "is-invalid" : "")">
+                <option value="">Seleccione sentido</option>
+                @foreach (var sentido in sentidosIndicador)
+                {
+                    <option value="@sentido.GetValueOrDefault("id", "")">@sentido.GetValueOrDefault("nombre", "Desconocido")</option>
+                }
+            </select>
+            @if (mostrarErrorSentido)
+            {
+                <div class="invalid-feedback">Seleccione un sentido válido</div>
+            }
+        </div>
+        <div class="col-md-2">
+            <select @bind="nuevoIndicadorFrecuencia" class="form-select @(mostrarErrorFrecuencia ? "is-invalid" : "")">
+                <option value="">Seleccione frecuencia</option>
+                @foreach (var frecuencia in frecuencias)
+                {
+                    <option value="@frecuencia.GetValueOrDefault("id", "")">@frecuencia.GetValueOrDefault("nombre", "Desconocido")</option>
+                }
+            </select>
+            @if (mostrarErrorFrecuencia)
+            {
+                <div class="invalid-feedback">Seleccione una frecuencia válida</div>
+            }
+        </div>
+        <div class="col-md-2">
+            <input @bind="nuevoIndicadorArticulo" class="form-control" placeholder="Artículo" />
+        </div>
+        <div class="col-md-2">
+            <input @bind="nuevoIndicadorLiteral" class="form-control" placeholder="Literal" />
+        </div>
+        <div class="col-md-2">
+            <input @bind="nuevoIndicadorNumeral" class="form-control" placeholder="Numeral" />
+        </div>
+        <div class="col-md-2">
+            <input @bind="nuevoIndicadorParagrafo" class="form-control" placeholder="Parágrafo" />
+        </div>
+        <div class="col-md-2">
+            <button class="btn btn-success w-100" @onclick="CrearIndicador">Crear</button>
+        </div>
+    </div>
+</div>
+
+@if (errorMensaje != null)
+{
+    <div class="alert alert-danger mt-3">@errorMensaje</div>
+}
+
+@if (cargando)
+{
+    <div class="text-center my-4">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Cargando indicadores...</span>
+        </div>
+        <p>Cargando indicadores...</p>
+    </div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-striped table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th>Código</th>
+                    <th>Nombre</th>
+                    <th>Objetivo</th>
+                    <th>Alcance</th>
+                    <th>Fórmula</th>
+                    <th>Tipo</th>
+                    <th>Unidad</th>
+                    <th>Meta</th>
+                    <th>Sentido</th>
+                    <th>Frecuencia</th>
+                    <th>Artículo</th>
+                    <th>Literal</th>
+                    <th>Numeral</th>
+                    <th>Parágrafo</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var indicador in indicadores)
+                {
+                    <tr>
+                        <td>@indicador.GetValueOrDefault("codigo", "N/A")</td>
+                        <td>@indicador.GetValueOrDefault("nombre", "N/A")</td>
+                        <td>@indicador.GetValueOrDefault("objetivo", "N/A")</td>
+                        <td>@indicador.GetValueOrDefault("alcance", "N/A")</td>
+                        <td>@indicador.GetValueOrDefault("formula", "N/A")</td>
+                        <td>@ObtenerNombreTipoIndicador(indicador.GetValueOrDefault("fkidtipoindicador", "").ToString())</td>
+                        <td>@ObtenerNombreUnidadMedicion(indicador.GetValueOrDefault("fkidunidadmedicion", "").ToString())</td>
+                        <td>@indicador.GetValueOrDefault("meta", "N/A")</td>
+                        <td>@ObtenerNombreSentido(indicador.GetValueOrDefault("fkidsentido", "").ToString())</td>
+                        <td>@ObtenerNombreFrecuencia(indicador.GetValueOrDefault("fkidfrecuencia", "").ToString())</td>
+                        <td>@indicador.GetValueOrDefault("fkidarticulo", "N/A")</td>
+                        <td>@indicador.GetValueOrDefault("fkidliteral", "N/A")</td>
+                        <td>@indicador.GetValueOrDefault("fkidnumeral", "N/A")</td>
+                        <td>@indicador.GetValueOrDefault("fkidparagrafo", "N/A")</td>
+                        <td>
+                            <button class="btn btn-sm btn-primary me-1" @onclick="() => IniciarEdicion(indicador)">
+                                Editar
+                            </button>
+                            <button class="btn btn-sm btn-danger" @onclick="() => EliminarIndicador(indicador)">
+                                Eliminar
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private const string PROYECTO = "proyecto";
+    private const string TABLA = "indicador";
+
+    private List<Dictionary<string, object>> indicadores = new();
+    private List<Dictionary<string, object>> tiposIndicador = new();
+    private List<Dictionary<string, object>> unidadesMedicion = new();
+    private List<Dictionary<string, object>> sentidosIndicador = new();
+    private List<Dictionary<string, object>> frecuencias = new();
+
+    private string nuevoIndicadorCodigo = string.Empty;
+    private string nuevoIndicadorNombre = string.Empty;
+    private string nuevoIndicadorObjetivo = string.Empty;
+    private string nuevoIndicadorAlcance = string.Empty;
+    private string nuevoIndicadorFormula = string.Empty;
+    private string nuevoIndicadorTipo = string.Empty;
+    private string nuevoIndicadorUnidadMedicion = string.Empty;
+    private string nuevoIndicadorMeta = string.Empty;
+    private string nuevoIndicadorSentido = string.Empty;
+    private string nuevoIndicadorFrecuencia = string.Empty;
+    private string nuevoIndicadorArticulo = string.Empty;
+    private string nuevoIndicadorLiteral = string.Empty;
+    private string nuevoIndicadorNumeral = string.Empty;
+    private string nuevoIndicadorParagrafo = string.Empty;
+
+    // Variables for editing indicators
+    private string? indicadorEditarCodigo = null;
+    private string? indicadorEditarNombre = null;
+    private string? indicadorEditarObjetivo = null;
+    private string? indicadorEditarAlcance = null;
+    private string? indicadorEditarFormula = null;
+    private string? indicadorEditarTipo = null;
+    private string? indicadorEditarUnidadMedicion = null;
+    private string? indicadorEditarMeta = null;
+    private string? indicadorEditarSentido = null;
+    private string? indicadorEditarFrecuencia = null;
+    private string? indicadorEditarArticulo = null;
+    private string? indicadorEditarLiteral = null;
+    private string? indicadorEditarNumeral = null;
+    private string? indicadorEditarParagrafo = null;
+
+    private bool indicadorEnEdicion = false;
+
+    private string? errorMensaje = null;
+    private bool cargando = true;
+    private bool mostrarErrorTipo = false;
+    private bool mostrarErrorUnidad = false;
+    private bool mostrarErrorSentido = false;
+    private bool mostrarErrorFrecuencia = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Task.WhenAll(
+            ObtenerTiposIndicador(),
+            ObtenerUnidadesMedicion(),
+            ObtenerSentidosIndicador(),
+            ObtenerFrecuencias(),
+            ObtenerIndicadores()
+        );
+    }
+
+    private async Task ObtenerTiposIndicador()
+    {
+        tiposIndicador = await servicioEntidad.ObtenerTodosAsync(PROYECTO, "tipoindicador") ?? new();
+    }
+
+    private async Task ObtenerUnidadesMedicion()
+    {
+        unidadesMedicion = await servicioEntidad.ObtenerTodosAsync(PROYECTO, "unidadmedicion") ?? new();
+    }
+
+    private async Task ObtenerSentidosIndicador()
+    {
+        sentidosIndicador = await servicioEntidad.ObtenerTodosAsync(PROYECTO, "sentido") ?? new();
+    }
+
+    private async Task ObtenerFrecuencias()
+    {
+        frecuencias = await servicioEntidad.ObtenerTodosAsync(PROYECTO, "frecuencia") ?? new();
+    }
+
+    private async Task ObtenerIndicadores()
+    {
+        cargando = true;
+        try
+        {
+            indicadores = await servicioEntidad.ObtenerTodosAsync(PROYECTO, TABLA) ?? new();
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error al cargar los indicadores: {ex.Message}";
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+    private async Task CrearIndicador()
+    {
+        // Validar campos requeridos
+        mostrarErrorTipo = string.IsNullOrEmpty(nuevoIndicadorTipo);
+        mostrarErrorUnidad = string.IsNullOrEmpty(nuevoIndicadorUnidadMedicion);
+        mostrarErrorSentido = string.IsNullOrEmpty(nuevoIndicadorSentido);
+        mostrarErrorFrecuencia = string.IsNullOrEmpty(nuevoIndicadorFrecuencia);
+
+        if (mostrarErrorTipo || mostrarErrorUnidad || mostrarErrorSentido || mostrarErrorFrecuencia)
+        {
+            errorMensaje = "Por favor complete todos los campos requeridos";
+            StateHasChanged();
+            return;
+        }
+
+        // Validar que las claves foráneas existan
+        if (!sentidosIndicador.Any(s => s.GetValueOrDefault("id", "").ToString() == nuevoIndicadorSentido))
+        {
+            errorMensaje = "El sentido seleccionado no existe";
+            mostrarErrorSentido = true;
+            StateHasChanged();
+            return;
+        }
+
+        var nuevoIndicador = new Dictionary<string, object>
+        {
+            { "codigo", nuevoIndicadorCodigo },
+            { "nombre", nuevoIndicadorNombre },
+            { "objetivo", nuevoIndicadorObjetivo },
+            { "alcance", nuevoIndicadorAlcance },
+            { "formula", nuevoIndicadorFormula },
+            { "fkidtipoindicador", nuevoIndicadorTipo },
+            { "fkidunidadmedicion", nuevoIndicadorUnidadMedicion },
+            { "meta", nuevoIndicadorMeta },
+            { "fkidsentido", nuevoIndicadorSentido },
+            { "fkidfrecuencia", nuevoIndicadorFrecuencia },
+            { "fkidarticulo", nuevoIndicadorArticulo },
+            { "fkidliteral", nuevoIndicadorLiteral },
+            { "fkidnumeral", nuevoIndicadorNumeral },
+            { "fkidparagrafo", nuevoIndicadorParagrafo }
+        };
+
+        try
+        {
+            bool resultado = await servicioEntidad.CrearAsync(PROYECTO, TABLA, nuevoIndicador);
+            if (resultado)
+            {
+                // Limpiar campos
+                nuevoIndicadorCodigo = string.Empty;
+                nuevoIndicadorNombre = string.Empty;
+                nuevoIndicadorObjetivo = string.Empty;
+                nuevoIndicadorAlcance = string.Empty;
+                nuevoIndicadorFormula = string.Empty;
+                nuevoIndicadorTipo = string.Empty;
+                nuevoIndicadorUnidadMedicion = string.Empty;
+                nuevoIndicadorMeta = string.Empty;
+                nuevoIndicadorSentido = string.Empty;
+                nuevoIndicadorFrecuencia = string.Empty;
+                nuevoIndicadorArticulo = string.Empty;
+                nuevoIndicadorLiteral = string.Empty;
+                nuevoIndicadorNumeral = string.Empty;
+                nuevoIndicadorParagrafo = string.Empty;
+
+                await ObtenerIndicadores();
+                errorMensaje = null;
+            }
+            else
+            {
+                errorMensaje = "Error al crear el indicador.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error crítico: {ex.Message}";
+        }
+        finally
+        {
+            StateHasChanged();
+        }
+    }
+
+    private string ObtenerNombreTipoIndicador(string idTipoIndicador)
+    {
+        var tipo = tiposIndicador.FirstOrDefault(t => t.GetValueOrDefault("id", "").ToString() == idTipoIndicador);
+        return tipo?.GetValueOrDefault("nombre", "Desconocido").ToString() ?? "Desconocido";
+    }
+
+    private string ObtenerNombreUnidadMedicion(string idUnidadMedicion)
+    {
+        var unidad = unidadesMedicion.FirstOrDefault(u => u.GetValueOrDefault("id", "").ToString() == idUnidadMedicion);
+        return unidad?.GetValueOrDefault("nombre", "Desconocido").ToString() ?? "Desconocido";
+    }
+
+    private string ObtenerNombreSentido(string idSentido)
+    {
+        var sentido = sentidosIndicador.FirstOrDefault(s => s.GetValueOrDefault("id", "").ToString() == idSentido);
+        return sentido?.GetValueOrDefault("nombre", "Desconocido").ToString() ?? "Desconocido";
+    }
+
+    private string ObtenerNombreFrecuencia(string idFrecuencia)
+    {
+        var frecuencia = frecuencias.FirstOrDefault(f => f.GetValueOrDefault("id", "").ToString() == idFrecuencia);
+        return frecuencia?.GetValueOrDefault("nombre", "Desconocido").ToString() ?? "Desconocido";
+    }
+
+    private void IniciarEdicion(Dictionary<string, object> indicador)
+{
+    // Asignar los valores del indicador seleccionado a las variables de edición
+    indicadorEditarCodigo = indicador.GetValueOrDefault("codigo", "").ToString();
+    indicadorEditarNombre = indicador.GetValueOrDefault("nombre", "").ToString();
+    indicadorEditarObjetivo = indicador.GetValueOrDefault("objetivo", "").ToString();
+    indicadorEditarAlcance = indicador.GetValueOrDefault("alcance", "").ToString();
+    indicadorEditarFormula = indicador.GetValueOrDefault("formula", "").ToString();
+    indicadorEditarTipo = indicador.GetValueOrDefault("fkidtipoindicador", "").ToString();
+    indicadorEditarUnidadMedicion = indicador.GetValueOrDefault("fkidunidadmedicion", "").ToString();
+    indicadorEditarMeta = indicador.GetValueOrDefault("meta", "").ToString();
+    indicadorEditarSentido = indicador.GetValueOrDefault("fkidsentido", "").ToString();
+    indicadorEditarFrecuencia = indicador.GetValueOrDefault("fkidfrecuencia", "").ToString();
+    indicadorEditarArticulo = indicador.GetValueOrDefault("fkidarticulo", "").ToString();
+    indicadorEditarLiteral = indicador.GetValueOrDefault("fkidliteral", "").ToString();
+    indicadorEditarNumeral = indicador.GetValueOrDefault("fkidnumeral", "").ToString();
+    indicadorEditarParagrafo = indicador.GetValueOrDefault("fkidparagrafo", "").ToString();
+
+    // Cambiar el estado para indicar que se está editando
+    indicadorEnEdicion = true;
+}
+    private async Task EliminarIndicador(Dictionary<string, object> indicador)
+    {
+        bool confirmar = await JSRuntime.InvokeAsync<bool>("confirm", 
+            $"¿Está seguro de eliminar el indicador '{indicador.GetValueOrDefault("nombre", "")}'?");
+        
+        if (!confirmar) return;
+
+        try
+        {
+            bool resultado = await servicioEntidad.EliminarAsync(
+                PROYECTO,
+                TABLA,
+                "codigo",
+                indicador.GetValueOrDefault("codigo", "").ToString()
+            );
+
+            if (resultado)
+            {
+                await ObtenerIndicadores();
+            }
+            else
+            {
+                errorMensaje = "Error al eliminar el indicador.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error al eliminar: {ex.Message}";
+        }
+        finally
+        {
+            StateHasChanged();
+        }
+    }
+}

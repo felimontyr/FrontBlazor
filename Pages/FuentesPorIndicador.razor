@@ -1,0 +1,161 @@
+@page "/FuentesPorIndicador"
+@using System.Collections.Generic
+@using System.Text.Json
+@using Services
+@inject ServicioEntidad servicioEntidad
+@inject NavigationManager navegacionManager
+@inject IJSRuntime JSRuntime
+
+<h3>Asignar Fuente a Indicador</h3>
+
+<div class="mb-3">
+    <select class="form-select mb-2" @bind="nuevaFuenteId">
+        <option value="">Seleccione una fuente</option>
+        @foreach (var fuente in fuentes)
+        {
+            <option value="@fuente["id"]">@fuente["nombre"]</option>
+        }
+    </select>
+
+    <select class="form-select mb-2" @bind="nuevoIndicadorId">
+        <option value="">Seleccione un indicador</option>
+        @foreach (var indicador in indicadores)
+        {
+            <option value="@indicador["id"]">@indicador["nombre"]</option>
+        }
+    </select>
+
+    <button class="btn btn-success" @onclick="AsignarFuenteAIndicador">Asignar Fuente</button>
+</div>
+
+@if (!string.IsNullOrEmpty(mensaje))
+{
+    <div class="alert alert-info">@mensaje</div>
+}
+
+<h4 class="mt-4">Relaciones actuales</h4>
+
+@if (fuentesPorIndicador.Count == 0)
+{
+    <p>No hay relaciones registradas.</p>
+}
+else
+{
+    <ul class="list-group">
+        @foreach (var relacion in fuentesPorIndicador)
+        {
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                <span>
+                    Fuente: @(ObtenerNombreFuente(relacion["fkidfuente"].ToString())) - 
+                    Indicador: @(ObtenerNombreIndicador(relacion["fkidindicador"].ToString()))
+                </span>
+                <button class="btn btn-danger btn-sm" @onclick="() => EliminarRelacion(relacion)">Eliminar</button>
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    private const string PROYECTO = "proyecto";
+    private const string TABLA = "fuentesporindicador";
+
+    private List<Dictionary<string, object>> fuentes = new();
+    private List<Dictionary<string, object>> indicadores = new();
+    private List<Dictionary<string, object>> fuentesPorIndicador = new();
+
+    private string nuevaFuenteId = string.Empty;
+    private string nuevoIndicadorId = string.Empty;
+    private string mensaje = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        fuentes = await servicioEntidad.ObtenerTodosAsync(PROYECTO, "fuente") ?? new();
+        indicadores = await servicioEntidad.ObtenerTodosAsync(PROYECTO, "indicador") ?? new();
+        await ObtenerRelaciones();
+    }
+
+    private async Task ObtenerRelaciones()
+    {
+        fuentesPorIndicador = await servicioEntidad.ObtenerTodosAsync(PROYECTO, TABLA) ?? new();
+    }
+
+    private async Task AsignarFuenteAIndicador()
+    {
+        mensaje = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(nuevaFuenteId) || string.IsNullOrWhiteSpace(nuevoIndicadorId))
+        {
+            mensaje = "Debe seleccionar una fuente y un indicador.";
+            return;
+        }
+
+        // Validación opcional para evitar duplicados
+        if (fuentesPorIndicador.Any(r =>
+            r["fkidfuente"].ToString() == nuevaFuenteId &&
+            r["fkidindicador"].ToString() == nuevoIndicadorId))
+        {
+            mensaje = "La relación ya existe.";
+            return;
+        }
+
+        var parametros = new Dictionary<string, object>
+        {
+            { "nombreSP", "sp_insertar_fuente_indicador" },
+            { "fkidfuente", nuevaFuenteId },
+            { "fkidindicador", Convert.ToInt32(nuevoIndicadorId) }
+        };
+
+        var resultado = await servicioEntidad.EjecutarProcedimientoAsync(PROYECTO, TABLA, "sp_insertar_fuente_indicador", parametros);
+
+        if (resultado != null)
+        {
+            mensaje = "Fuente asignada correctamente.";
+            nuevaFuenteId = string.Empty;
+            nuevoIndicadorId = string.Empty;
+            await ObtenerRelaciones();
+        }
+        else
+        {
+            mensaje = "Error al asignar la fuente.";
+        }
+    }
+
+    private async Task EliminarRelacion(Dictionary<string, object> relacion)
+    {
+        bool confirmar = await JSRuntime.InvokeAsync<bool>("confirm", 
+            $"¿Deseas eliminar la relación de la fuente {ObtenerNombreFuente(relacion["fkidfuente"].ToString())} con el indicador {ObtenerNombreIndicador(relacion["fkidindicador"].ToString())}?");
+
+        if (!confirmar) return;
+
+        var parametros = new Dictionary<string, object>
+        {
+            { "nombreSP", "sp_eliminar_fuente_indicador" },
+            { "fkidfuente", relacion["fkidfuente"] },
+            { "fkidindicador", int.Parse(relacion["fkidindicador"].ToString()!) }
+        };
+
+        var resultado = await servicioEntidad.EjecutarProcedimientoAsync(PROYECTO, TABLA, "sp_eliminar_fuente_indicador", parametros);
+
+        if (resultado != null)
+        {
+            mensaje = "Relación eliminada correctamente.";
+            await ObtenerRelaciones();
+        }
+        else
+        {
+            mensaje = "Error al eliminar la relación.";
+        }
+    }
+
+    private string ObtenerNombreFuente(string idFuente)
+    {
+        var fuente = fuentes.FirstOrDefault(f => f["id"].ToString() == idFuente);
+        return fuente != null ? fuente["nombre"].ToString() : "Desconocido";
+    }
+
+    private string ObtenerNombreIndicador(string idIndicador)
+    {
+        var indicador = indicadores.FirstOrDefault(i => i["id"].ToString() == idIndicador);
+        return indicador != null ? indicador["nombre"].ToString() : "Desconocido";
+    }
+}

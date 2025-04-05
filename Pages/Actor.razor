@@ -55,7 +55,8 @@ else
                 else
                 {
                     <div>
-                        <span class="fw-bold">#@actor["id"]</span> - @actor["nombre"] (Tipo: @(actor.ContainsKey("fkidtipoactor") ? actor["fkidtipoactor"] : "N/A"))
+                        <span class="fw-bold">#@actor["id"]</span> - @actor["nombre"] 
+                        (Tipo: @ObtenerNombreTipoActor(actor.ContainsKey("fkidtipoactor") ? actor["fkidtipoactor"].ToString() : null))
                     </div>
                     <div>
                         <button class="btn btn-sm btn-primary" @onclick="() => IniciarEdicion(actor)">Editar</button>
@@ -218,7 +219,7 @@ else
                 PROYECTO, 
                 TABLA, 
                 "id", 
-                actor["id"].ToString()
+                actor["id"]?.ToString() ?? string.Empty
             );
 
             if (resultado)
@@ -234,5 +235,16 @@ else
         {
             errorMensaje = $"Error de eliminación: {ex.Message}";
         }
+    }
+
+    private string ObtenerNombreTipoActor(string? idTipoActor)
+    {
+        if (string.IsNullOrEmpty(idTipoActor))
+        {
+            return "N/A"; // Si no hay un tipo asociado, muestra "N/A"
+        }
+
+        var tipoActor = tiposActor.FirstOrDefault(t => t["id"].ToString() == idTipoActor);
+        return tipoActor != null ? tipoActor["nombre"].ToString() : "Desconocido";
     }
 }
