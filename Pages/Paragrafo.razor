@@ -1,0 +1,250 @@
+@page "/Paragrafo"
+@using System.Collections.Generic
+@using System.Text.Json
+@using Services
+@inject ServicioEntidad servicioEntidad
+@inject NavigationManager navegacionManager
+@inject IJSRuntime JSRuntime
+
+<h3>Parágrafos</h3>
+
+<div>
+    <input @bind="nuevoParagrafoId" placeholder="ID del parágrafo" class="form-control mb-2" />
+    <input @bind="nuevoParagrafoDescripcion" placeholder="Descripción del parágrafo" class="form-control mb-2" />
+    <select @bind="nuevoParagrafoArticulo" class="form-select mb-2">
+        <option value="">Seleccione un artículo</option>
+        @foreach (var articulo in articulos)
+        {
+            <option value="@articulo["id"]">@articulo["nombre"]</option>
+        }
+    </select>
+    <button class="btn btn-success" @onclick="CrearParagrafo">Crear</button>
+</div>
+
+@if (errorMensaje != null)
+{
+    <div class="alert alert-danger mt-3">@errorMensaje</div>
+}
+
+@if (cargando)
+{
+    <div class="text-center my-4">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Cargando parágrafos...</span>
+        </div>
+        <p>Cargando parágrafos...</p>
+    </div>
+}
+else
+{
+    <ul class="list-group mt-3">
+        @foreach (var paragrafo in paragrafos)
+        {
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                @if (paragrafoEditarId == paragrafo["id"].ToString())
+                {
+                    <div class="d-flex gap-2">
+                        <input @bind="paragrafoEditarId" class="form-control" disabled />
+                        <input @bind="paragrafoEditarDescripcion" class="form-control" />
+                        <select @bind="paragrafoEditarArticulo" class="form-select">
+                            <option value="">Seleccione un artículo</option>
+                            @foreach (var articulo in articulos)
+                            {
+                                <option value="@articulo["id"]" selected="@(paragrafoEditarArticulo == articulo["id"].ToString())">
+                                    @articulo["nombre"]
+                                </option>
+                            }
+                        </select>
+                        <button class="btn btn-sm btn-success" @onclick="() => GuardarEdicion(paragrafo)">Guardar</button>
+                        <button class="btn btn-sm btn-secondary" @onclick="CancelarEdicion">Cancelar</button>
+                    </div>
+                }
+                else
+                {
+                    <div>
+                        <span class="fw-bold">#@paragrafo["id"]</span> - @paragrafo["descripcion"]
+                        (Artículo: @ObtenerNombreArticulo(paragrafo["fkidarticulo"].ToString()))
+                    </div>
+                    <div>
+                        <button class="btn btn-sm btn-primary" @onclick="() => IniciarEdicion(paragrafo)">Editar</button>
+                        <button class="btn btn-sm btn-danger" @onclick="() => EliminarParagrafo(paragrafo)">Eliminar</button>
+                    </div>
+                }
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    private const string PROYECTO = "proyecto";
+    private const string TABLA = "paragrafo";
+    private const string TABLA_ARTICULO = "articulo";
+
+    private List<Dictionary<string, object>> paragrafos = new();
+    private List<Dictionary<string, object>> articulos = new();
+
+    private string nuevoParagrafoId = string.Empty;
+    private string nuevoParagrafoDescripcion = string.Empty;
+    private string nuevoParagrafoArticulo = string.Empty;
+
+    private string paragrafoEditarId = string.Empty;
+    private string paragrafoEditarDescripcion = string.Empty;
+    private string paragrafoEditarArticulo = string.Empty;
+
+    private string? errorMensaje = null;
+    private bool cargando = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ObtenerArticulos();
+        await ObtenerParagrafos();
+    }
+
+    private async Task ObtenerArticulos()
+    {
+        try
+        {
+            articulos = await servicioEntidad.ObtenerTodosAsync(PROYECTO, TABLA_ARTICULO);
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error al cargar los artículos: {ex.Message}";
+        }
+    }
+
+    private async Task ObtenerParagrafos()
+    {
+        cargando = true;
+        errorMensaje = null;
+
+        try
+        {
+            var resultado = await servicioEntidad.ObtenerTodosAsync(PROYECTO, TABLA);
+            paragrafos = resultado?.Count > 0 ? resultado : new List<Dictionary<string, object>>();
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error al cargar los parágrafos: {ex.Message}";
+        }
+        finally
+        {
+            cargando = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task CrearParagrafo()
+    {
+        if (string.IsNullOrWhiteSpace(nuevoParagrafoId) || string.IsNullOrWhiteSpace(nuevoParagrafoDescripcion) || string.IsNullOrWhiteSpace(nuevoParagrafoArticulo))
+        {
+            errorMensaje = "Todos los campos son obligatorios.";
+            return;
+        }
+
+        try
+        {
+            var nuevoParagrafo = new Dictionary<string, object>
+            {
+                { "id", nuevoParagrafoId },
+                { "descripcion", nuevoParagrafoDescripcion },
+                { "fkidarticulo", nuevoParagrafoArticulo }
+            };
+
+            bool resultado = await servicioEntidad.CrearAsync(PROYECTO, TABLA, nuevoParagrafo);
+
+            if (resultado)
+            {
+                nuevoParagrafoId = string.Empty;
+                nuevoParagrafoDescripcion = string.Empty;
+                nuevoParagrafoArticulo = string.Empty;
+                await ObtenerParagrafos();
+            }
+            else
+            {
+                errorMensaje = "Error al crear el parágrafo.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error al crear el parágrafo: {ex.Message}";
+        }
+    }
+
+    private void IniciarEdicion(Dictionary<string, object> paragrafo)
+    {
+        paragrafoEditarId = paragrafo["id"].ToString();
+        paragrafoEditarDescripcion = paragrafo["descripcion"].ToString();
+        paragrafoEditarArticulo = paragrafo["fkidarticulo"].ToString();
+    }
+
+    private void CancelarEdicion()
+    {
+        paragrafoEditarId = string.Empty;
+        paragrafoEditarDescripcion = string.Empty;
+        paragrafoEditarArticulo = string.Empty;
+    }
+
+    private async Task GuardarEdicion(Dictionary<string, object> paragrafo)
+    {
+        if (string.IsNullOrWhiteSpace(paragrafoEditarDescripcion) || string.IsNullOrWhiteSpace(paragrafoEditarArticulo))
+        {
+            errorMensaje = "Todos los campos son obligatorios.";
+            return;
+        }
+
+        try
+        {
+            var paragrafoActualizado = new Dictionary<string, object>
+            {
+                { "descripcion", paragrafoEditarDescripcion },
+                { "fkidarticulo", paragrafoEditarArticulo }
+            };
+
+            bool resultado = await servicioEntidad.ActualizarAsync(PROYECTO, TABLA, "id", paragrafo["id"].ToString(), paragrafoActualizado);
+
+            if (resultado)
+            {
+                await ObtenerParagrafos();
+                CancelarEdicion();
+            }
+            else
+            {
+                errorMensaje = "Error al actualizar el parágrafo.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error al actualizar el parágrafo: {ex.Message}";
+        }
+    }
+
+    private async Task EliminarParagrafo(Dictionary<string, object> paragrafo)
+    {
+        bool confirmar = await JSRuntime.InvokeAsync<bool>("confirm", $"¿Está seguro de eliminar el parágrafo '{paragrafo["descripcion"]}'?");
+        if (!confirmar) return;
+
+        try
+        {
+            bool resultado = await servicioEntidad.EliminarAsync(PROYECTO, TABLA, "id", paragrafo["id"].ToString());
+
+            if (resultado)
+            {
+                await ObtenerParagrafos();
+            }
+            else
+            {
+                errorMensaje = "Error al eliminar el parágrafo.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error al eliminar el parágrafo: {ex.Message}";
+        }
+    }
+
+    private string ObtenerNombreArticulo(string idArticulo)
+    {
+        var articulo = articulos.FirstOrDefault(a => a["id"].ToString() == idArticulo);
+        return articulo != null ? articulo["nombre"].ToString() : "Artículo no encontrado";
+    }
+}

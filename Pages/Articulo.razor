@@ -1,0 +1,304 @@
+@page "/Articulo"
+@using System.Collections.Generic
+@using System.Text.Json
+@using Services
+@inject ServicioEntidad servicioEntidad
+@inject NavigationManager navegacionManager
+@inject IJSRuntime JSRuntime
+
+<h3>Artículos</h3>
+
+<div>
+    <input @bind="nuevoArticuloId" placeholder="ID del artículo" />
+    <input @bind="nuevoArticuloNombre" placeholder="Nombre del artículo" />
+    <textarea @bind="nuevoArticuloDescripcion" placeholder="Descripción del artículo" class="form-control"></textarea>
+    <select @bind="nuevoArticuloSeccion">
+        <option value="">Seleccione una sección</option>
+        @foreach (var seccion in secciones)
+        {
+            <option value="@seccion["id"]">@seccion["nombre"]</option>
+        }
+    </select>
+    <select @bind="nuevoArticuloSubseccion">
+        <option value="">Seleccione una subsección</option>
+        @foreach (var subseccion in subsecciones)
+        {
+            <option value="@subseccion["id"]">@subseccion["nombre"]</option>
+        }
+    </select>
+    <button class="btn-success" @onclick="CrearArticulo">Crear</button>
+</div>
+
+@if (errorMensaje != null)
+{
+    <div class="alert alert-danger">@errorMensaje</div>
+}
+
+@if (cargando)
+{
+    <div>Cargando artículos...</div>
+}
+else
+{
+    <ul class="list-group mt-3">
+        @foreach (var articulo in articulos)
+        {
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                @if (articuloEditarId == articulo["id"].ToString())
+                {
+                    <div class="d-flex gap-2">
+                        <input @bind="articuloEditarId" class="form-control" disabled />
+                        <input @bind="articuloEditarNombre" class="form-control" />
+                        <textarea @bind="articuloEditarDescripcion" class="form-control"></textarea>
+                        <select @bind="articuloEditarSeccion" class="form-control">
+                            <option value="">Seleccione una sección</option>
+                            @foreach (var seccion in secciones)
+                            {
+                                <option value="@seccion["id"]" selected="@(articuloEditarSeccion == seccion["id"].ToString())">@seccion["nombre"]</option>
+                            }
+                        </select>
+                        <select @bind="articuloEditarSubseccion" class="form-control">
+                            <option value="">Seleccione una subsección</option>
+                            @foreach (var subseccion in subsecciones)
+                            {
+                                <option value="@subseccion["id"]" selected="@(articuloEditarSubseccion == subseccion["id"].ToString())">@subseccion["nombre"]</option>
+                            }
+                        </select>
+                        <button class="btn btn-sm btn-success" @onclick="() => GuardarEdicion(articulo)">Guardar</button>
+                        <button class="btn btn-sm btn-secondary" @onclick="CancelarEdicion">Cancelar</button>
+                    </div>
+                }
+                else
+                {
+                    <div>
+                        <span class="fw-bold">#@articulo["id"]</span> - @articulo["nombre"] 
+                        (Sección: @ObtenerNombreSeccion(articulo.ContainsKey("fkidseccion") ? articulo["fkidseccion"].ToString() : null), 
+                        Subsección: @ObtenerNombreSubseccion(articulo.ContainsKey("fkidsubseccion") ? articulo["fkidsubseccion"].ToString() : null))
+                        <p>@articulo["descripcion"]</p>
+                    </div>
+                    <div>
+                        <button class="btn btn-sm btn-primary" @onclick="() => IniciarEdicion(articulo)">Editar</button>
+                        <button class="btn btn-sm btn-danger" @onclick="() => EliminarArticulo(articulo)">Eliminar</button>
+                    </div>
+                }
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    private const string PROYECTO = "proyecto";
+    private const string TABLA = "articulo";
+    private List<Dictionary<string, object>> articulos = new List<Dictionary<string, object>>();
+    private List<Dictionary<string, object>> secciones = new List<Dictionary<string, object>>();
+    private List<Dictionary<string, object>> subsecciones = new List<Dictionary<string, object>>();
+    private string nuevoArticuloId = string.Empty;
+    private string nuevoArticuloNombre = string.Empty;
+    private string nuevoArticuloDescripcion = string.Empty;
+    private string nuevoArticuloSeccion = string.Empty;
+    private string nuevoArticuloSubseccion = string.Empty;
+    private string articuloEditarId = string.Empty;
+    private string articuloEditarNombre = string.Empty;
+    private string articuloEditarDescripcion = string.Empty;
+    private string articuloEditarSeccion = string.Empty;
+    private string articuloEditarSubseccion = string.Empty;
+    private string? errorMensaje = null;
+    private bool cargando = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ObtenerSecciones();
+        await ObtenerSubsecciones();
+        await ObtenerArticulos();
+    }
+
+    private async Task ObtenerSecciones()
+    {
+        try
+        {
+            secciones = await servicioEntidad.ObtenerTodosAsync(PROYECTO, "seccion");
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error al cargar las secciones: {ex.Message}";
+        }
+    }
+
+    private async Task ObtenerSubsecciones()
+    {
+        try
+        {
+            subsecciones = await servicioEntidad.ObtenerTodosAsync(PROYECTO, "subseccion");
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error al cargar las subsecciones: {ex.Message}";
+        }
+    }
+
+    private async Task ObtenerArticulos()
+    {
+        cargando = true;
+        errorMensaje = null;
+
+        try
+        {
+            var resultado = await servicioEntidad.ObtenerTodosAsync(PROYECTO, TABLA);
+            articulos = resultado?.Count > 0 ? resultado : new List<Dictionary<string, object>>();
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error al cargar los artículos: {ex.Message}";
+            articulos = new List<Dictionary<string, object>>();
+        }
+        finally
+        {
+            cargando = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task CrearArticulo()
+    {
+        errorMensaje = null;
+
+        try
+        {
+            var nuevoArticulo = new Dictionary<string, object>
+            {
+                { "id", nuevoArticuloId },
+                { "nombre", nuevoArticuloNombre },
+                { "descripcion", nuevoArticuloDescripcion },
+                { "fkidseccion", nuevoArticuloSeccion },
+                { "fkidsubseccion", nuevoArticuloSubseccion }
+            };
+
+            bool resultado = await servicioEntidad.CrearAsync(PROYECTO, TABLA, nuevoArticulo);
+
+            if (resultado)
+            {
+                nuevoArticuloId = string.Empty;
+                nuevoArticuloNombre = string.Empty;
+                nuevoArticuloDescripcion = string.Empty;
+                nuevoArticuloSeccion = string.Empty;
+                nuevoArticuloSubseccion = string.Empty;
+                await ObtenerArticulos();
+            }
+            else
+            {
+                errorMensaje = "Error al crear el artículo. Intente nuevamente.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error crítico: {ex.Message}";
+        }
+    }
+
+    private void IniciarEdicion(Dictionary<string, object> articulo)
+    {
+        articuloEditarId = articulo["id"].ToString();
+        articuloEditarNombre = articulo["nombre"].ToString();
+        articuloEditarDescripcion = articulo["descripcion"].ToString();
+        articuloEditarSeccion = articulo.ContainsKey("fkidseccion") ? articulo["fkidseccion"].ToString() : string.Empty;
+        articuloEditarSubseccion = articulo.ContainsKey("fkidsubseccion") ? articulo["fkidsubseccion"].ToString() : string.Empty;
+    }
+
+    private void CancelarEdicion()
+    {
+        articuloEditarId = string.Empty;
+        articuloEditarNombre = string.Empty;
+        articuloEditarDescripcion = string.Empty;
+        articuloEditarSeccion = string.Empty;
+        articuloEditarSubseccion = string.Empty;
+    }
+
+    private async Task GuardarEdicion(Dictionary<string, object> articulo)
+    {
+        try
+        {
+            var articuloActualizado = new Dictionary<string, object>
+            {
+                { "nombre", articuloEditarNombre },
+                { "descripcion", articuloEditarDescripcion },
+                { "fkidseccion", articuloEditarSeccion },
+                { "fkidsubseccion", articuloEditarSubseccion }
+            };
+
+            bool resultado = await servicioEntidad.ActualizarAsync(
+                PROYECTO,
+                TABLA,
+                "id",
+                articulo["id"].ToString(),
+                articuloActualizado
+            );
+
+            if (resultado)
+            {
+                await ObtenerArticulos();
+                CancelarEdicion();
+            }
+            else
+            {
+                errorMensaje = "Error al actualizar el artículo.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error de actualización: {ex.Message}";
+        }
+    }
+
+    private async Task EliminarArticulo(Dictionary<string, object> articulo)
+    {
+        bool confirmar = await JSRuntime.InvokeAsync<bool>("confirm",
+            $"¿Está seguro de eliminar el artículo '{articulo["nombre"]}'?");
+
+        if (!confirmar) return;
+
+        try
+        {
+            bool resultado = await servicioEntidad.EliminarAsync(
+                PROYECTO,
+                TABLA,
+                "id",
+                articulo["id"].ToString()
+            );
+
+            if (resultado)
+            {
+                await ObtenerArticulos();
+            }
+            else
+            {
+                errorMensaje = "Error al eliminar el artículo.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error de eliminación: {ex.Message}";
+        }
+    }
+
+    private string ObtenerNombreSeccion(string? idSeccion)
+    {
+        if (string.IsNullOrEmpty(idSeccion))
+        {
+            return "N/A";
+        }
+
+        var seccion = secciones.FirstOrDefault(s => s["id"].ToString() == idSeccion);
+        return seccion != null ? seccion["nombre"].ToString() : "Desconocido";
+    }
+
+    private string ObtenerNombreSubseccion(string? idSubseccion)
+    {
+        if (string.IsNullOrEmpty(idSubseccion))
+        {
+            return "N/A";
+        }
+
+        var subseccion = subsecciones.FirstOrDefault(s => s["id"].ToString() == idSubseccion);
+        return subseccion != null ? subseccion["nombre"].ToString() : "Desconocido";
+    }
+}
