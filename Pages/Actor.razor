@@ -25,33 +25,6 @@
 {
     <div class="alert alert-danger">@errorMensaje</div>
 }
-@page "/Actor"
-@using System.Collections.Generic
-@using System.Text.Json
-@using Services
-@inject ServicioEntidad servicioEntidad
-@inject NavigationManager navegacionManager
-@inject IJSRuntime JSRuntime
-
-<h3>Actores</h3>
-
-<div>
-    <input @bind="nuevoActorId" placeholder="ID del actor" />
-    <input @bind="nuevoActorNombre" placeholder="Nombre del actor" />
-    <select @bind="nuevoActorTipo">
-        <option value="">Seleccione un tipo</option>
-        @foreach (var tipo in tiposActor)
-        {
-            <option value="@tipo["id"]">@tipo["nombre"]</option>
-        }
-    </select>
-    <button class="btn-success" @onclick="CrearActor">Crear</button>
-</div>
-
-@if (errorMensaje != null)
-{
-    <div class="alert alert-danger">@errorMensaje</div>
-}
 
 @if (cargando)
 {
@@ -94,42 +67,6 @@ else
     </ul>
 }
 
-@code {
-    private const string PROYECTO = "proyecto";
-    private const string TABLA = "actor";
-    private List<Dictionary<string, object>> actores = new List<Dictionary<string, object>>();
-    private List<Dictionary<string, object>> tiposActor = new List<Dictionary<string, object>>();
-    private string nuevoActorId = string.Empty;
-    private string nuevoActorNombre = string.Empty;
-    private string nuevoActorTipo = string.Empty;
-    private string actorEditarId = string.Empty;
-    private string actorEditarNombre = string.Empty;
-    private string actorEditarTipo = string.Empty;
-    private string? errorMensaje = null;
-    private bool cargando = true;
-
-    protected override async Task OnInitializedAsync()
-    {
-        await ObtenerTiposActor();
-        await ObtenerActores();
-    }
-
-    private async Task ObtenerTiposActor()
-    {
-        try
-        {
-            tiposActor = await servicioEntidad.ObtenerTodosAsync(PROYECTO, "tipoactor");
-        }
-        catch (Exception ex)
-        {
-            errorMensaje = $"Error al cargar los tipos de actor: {ex.Message}";
-        }
-    }
-
-    private async Task ObtenerActores()
-    {
-        cargando = true;
-        errorMensaje = null;
 @code {
     private const string PROYECTO = "proyecto";
     private const string TABLA = "actor";
