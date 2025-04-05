@@ -1,0 +1,148 @@
+@page "/rolusuario"
+@using System.Collections.Generic
+@using System.Text.Json
+@using Services
+@inject ServicioEntidad servicioEntidad
+@inject NavigationManager navegacionManager
+@inject IJSRuntime JSRuntime
+
+<h3>Asignar rol a usuario</h3>
+
+<div class="mb-3">
+    <select class="form-select mb-2" @bind="nuevoEmail">
+        <option value="">Seleccione un usuario</option>
+        @foreach (var usuario in usuarios)
+        {
+            <option value="@usuario["email"]">@usuario["email"]</option>
+        }
+    </select>
+
+    <select class="form-select mb-2" @bind="nuevoIdRol">
+        <option value="">Seleccione un rol</option>
+        @foreach (var rol in roles)
+        {
+            <option value="@rol["id"]">@rol["nombre"]</option>
+        }
+    </select>
+
+    <button class="btn btn-success" @onclick="AsignarRol">Asignar Rol</button>
+</div>
+
+@if (!string.IsNullOrEmpty(mensaje))
+{
+    <div class="alert alert-info">@mensaje</div>
+}
+
+<h4 class="mt-4">Relaciones actuales</h4>
+
+@if (relaciones.Count == 0)
+{
+    <p>No hay relaciones registradas.</p>
+}
+else
+{
+    <ul class="list-group">
+        @foreach (var relacion in relaciones)
+        {
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                <span>
+                    Usuario: @(relacion["fkemail"]) - Rol: @roles.FirstOrDefault(r => r["id"].ToString() == relacion["fkidrol"].ToString())?["nombre"]
+                </span>
+                <button class="btn btn-danger btn-sm" @onclick="() => EliminarRelacion(relacion)">Eliminar</button>
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    private const string PROYECTO = "proyecto";
+    private const string TABLA = "rol_usuario";
+
+    private List<Dictionary<string, object>> usuarios = new();
+    private List<Dictionary<string, object>> roles = new();
+    private List<Dictionary<string, object>> relaciones = new();
+
+    private string nuevoEmail = string.Empty;
+    private string nuevoIdRol = string.Empty;
+    private string mensaje = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        usuarios = await servicioEntidad.ObtenerTodosAsync(PROYECTO, "usuario") ?? new();
+        roles = await servicioEntidad.ObtenerTodosAsync(PROYECTO, "rol") ?? new();
+        await ObtenerRelaciones();
+    }
+
+    private async Task ObtenerRelaciones()
+    {
+        relaciones = await servicioEntidad.ObtenerTodosAsync(PROYECTO, TABLA) ?? new();
+    }
+
+    private async Task AsignarRol()
+    {
+        mensaje = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(nuevoEmail) || string.IsNullOrWhiteSpace(nuevoIdRol))
+        {
+            mensaje = "Debe seleccionar un usuario y un rol.";
+            return;
+        }
+
+        // Validación opcional para evitar duplicados
+        if (relaciones.Any(r =>
+            r["fkemail"].ToString() == nuevoEmail &&
+            r["fkidrol"].ToString() == nuevoIdRol))
+        {
+            mensaje = "La relación ya existe.";
+            return;
+        }
+
+        var parametros = new Dictionary<string, object>
+        {
+            { "nombreSP", "sp_insertar_rol_usuario" },
+            { "fkemail", nuevoEmail },
+            { "fkidrol", Convert.ToInt32(nuevoIdRol) }
+        };
+
+        var resultado = await servicioEntidad.EjecutarProcedimientoAsync(PROYECTO, TABLA, "sp_insertar_rol_usuario", parametros);
+
+        if (resultado != null)
+        {
+            mensaje = "Rol asignado correctamente.";
+            nuevoEmail = string.Empty;
+            nuevoIdRol = string.Empty;
+            await ObtenerRelaciones();
+        }
+        else
+        {
+            mensaje = "Error al asignar el rol.";
+        }
+    }
+
+    private async Task EliminarRelacion(Dictionary<string, object> relacion)
+    {
+        bool confirmar = await JSRuntime.InvokeAsync<bool>("confirm", 
+            $"¿Deseas eliminar la relación de {relacion["fkemail"]} con rol {relacion["fkidrol"]}?");
+
+        if (!confirmar) return;
+
+        var parametros = new Dictionary<string, object>
+        {
+            { "nombreSP", "sp_eliminar_rol_usuario" },
+            { "fkemail", relacion["fkemail"] },
+            { "fkidrol", int.Parse(relacion["fkidrol"].ToString()!) }
+        };
+
+        var resultado = await servicioEntidad.EjecutarProcedimientoAsync(PROYECTO, TABLA, "sp_eliminar_rol_usuario", parametros);
+
+        if (resultado != null)
+        {
+            mensaje = "Relación eliminada correctamente.";
+            await ObtenerRelaciones();
+        }
+        else
+        {
+            mensaje = "Error al eliminar la relación.";
+        }
+    }
+}

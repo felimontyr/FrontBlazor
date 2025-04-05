@@ -55,7 +55,7 @@ else
                 else
                 {
                     <div>
-                        <span class="fw-bold">#@actor["id"]</span> - @actor["nombre"] (Tipo: @(actor.ContainsKey("fkidtipoactor") ? actor["fkidtipoactor"] : "N/A"))
+                        <span class="fw-bold">#@actor["id"]</span> - @actor["nombre"] (Tipo: @tiposActor.FirstOrDefault(t => t["id"].ToString() == actor["fkidtipoactor"].ToString())?["nombre"])
                     </div>
                     <div>
                         <button class="btn btn-sm btn-primary" @onclick="() => IniciarEdicion(actor)">Editar</button>

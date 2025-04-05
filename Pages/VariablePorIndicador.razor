@@ -1,0 +1,308 @@
+@page "/variablesporindicador"
+@using System.Collections.Generic
+@using Services
+@inject ServicioEntidad servicioEntidad
+@inject IJSRuntime JSRuntime
+@using System.Text.Json
+
+<h3>Variables por Indicador</h3>
+
+@if (!string.IsNullOrEmpty(mensaje))
+{
+    <div class="alert alert-info">@mensaje</div>
+}
+
+<div class="mb-3">
+    <select class="form-select mb-2" @bind="nuevaVariableId">
+        <option value="">Seleccione una variable</option>
+        @foreach (var variable in variables)
+        {
+            <option value="@variable["id"]">@variable["nombre"]</option>
+        }
+    </select>
+
+    <select class="form-select mb-2" @bind="nuevoIndicadorId">
+        <option value="">Seleccione un indicador</option>
+        @foreach (var indicador in indicadores)
+        {
+            <option value="@indicador["id"]">@indicador["nombre"]</option>
+        }
+    </select>
+
+    <input class="form-control mb-2" placeholder="Dato (número decimal)" @bind="nuevoDato" />
+
+    <select class="form-select mb-2" @bind="nuevoUsuarioEmail">
+        <option value="">Seleccione un usuario</option>
+        @foreach (var usuario in usuarios)
+        {
+            <option value="@usuario["email"]">@usuario["email"]</option>
+        }
+    </select>
+
+    <input type="date" class="form-control mb-3" @bind="nuevaFechaDato" />
+
+    <button class="btn btn-success" @onclick="CrearRegistro">Crear Registro</button>
+</div>
+
+<h4 class="mt-4">Registros existentes</h4>
+
+@if (registros.Count == 0)
+{
+    <p>No hay registros aún.</p>
+}
+else
+{
+    <ul class="list-group">
+        @foreach (var reg in registros)
+        {
+            <li class="list-group-item d-flex justify-content-between align-items-start flex-column gap-2">
+                @if (editarId == reg["id"].ToString())
+                {
+                    <div class="w-100 d-flex flex-column gap-2">
+                        <select class="form-select" @bind="editarVariableId">
+                            <option value="">Seleccione una variable</option>
+                            @foreach (var v in variables)
+                            {
+                                <option value="@v["id"]">@v["nombre"]</option>
+                            }
+                        </select>
+
+                        <select class="form-select" @bind="editarIndicadorId">
+                            <option value="">Seleccione un indicador</option>
+                            @foreach (var i in indicadores)
+                            {
+                                <option value="@i["id"]">@i["nombre"]</option>
+                            }
+                        </select>
+
+                        <input class="form-control" @bind="editarDato" placeholder="Dato" />
+
+                        <select class="form-select" @bind="editarUsuarioEmail">
+                            <option value="">Seleccione un usuario</option>
+                            @foreach (var u in usuarios)
+                            {
+                                <option value="@u["email"]">@u["email"]</option>
+                            }
+                        </select>
+
+                        <input type="date" class="form-control" @bind="editarFechaDato" />
+
+                        <div class="mt-2 d-flex gap-2">
+                            <button class="btn btn-success btn-sm" @onclick="() => GuardarEdicion(reg)">Guardar</button>
+                            <button class="btn btn-secondary btn-sm" @onclick="CancelarEdicion">Cancelar</button>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <span>
+                        Variable: @variables.FirstOrDefault(v => v["id"].ToString() == reg["fkidvariable"].ToString())?["nombre"] -
+                        Indicador: @indicadores.FirstOrDefault(i => i["id"].ToString() == reg["fkidindicador"].ToString())?["nombre"] -
+                        Dato: @reg["dato"] -
+                        Usuario: @reg["fkemailusuario"] -
+                        Fecha: @FormatFecha(reg["fechadato"])
+                    </span>
+
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-primary btn-sm" @onclick="() => IniciarEdicion(reg)">Editar</button>
+                        <button class="btn btn-danger btn-sm" @onclick="() => EliminarRegistro(reg)">Eliminar</button>
+                    </div>
+                }
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    private const string PROYECTO = "proyecto";
+    private const string TABLA = "variablesporindicador";
+
+    private List<Dictionary<string, object>> registros = new();
+    private List<Dictionary<string, object>> variables = new();
+    private List<Dictionary<string, object>> indicadores = new();
+    private List<Dictionary<string, object>> usuarios = new();
+
+    // Crear
+    private string nuevaVariableId = string.Empty;
+    private string nuevoIndicadorId = string.Empty;
+    private string nuevoDato = string.Empty;
+    private string nuevoUsuarioEmail = string.Empty;
+    private DateTime nuevaFechaDato = DateTime.Today;
+
+    // Editar
+    private string editarId = string.Empty;
+    private string editarVariableId = string.Empty;
+    private string editarIndicadorId = string.Empty;
+    private string editarDato = string.Empty;
+    private string editarUsuarioEmail = string.Empty;
+    private DateTime editarFechaDato = DateTime.Today;
+
+    private string mensaje = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        variables = await servicioEntidad.ObtenerTodosAsync(PROYECTO, "variable") ?? new();
+        indicadores = await servicioEntidad.ObtenerTodosAsync(PROYECTO, "indicador") ?? new();
+        usuarios = await servicioEntidad.ObtenerTodosAsync(PROYECTO, "usuario") ?? new();
+        await ObtenerRegistros();
+    }
+
+    private async Task ObtenerRegistros()
+    {
+        registros = await servicioEntidad.ObtenerTodosAsync(PROYECTO, TABLA) ?? new();
+    }
+
+    private async Task CrearRegistro()
+    {
+        mensaje = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(nuevaVariableId) || string.IsNullOrWhiteSpace(nuevoIndicadorId) ||
+            string.IsNullOrWhiteSpace(nuevoDato) || string.IsNullOrWhiteSpace(nuevoUsuarioEmail))
+        {
+            mensaje = "Todos los campos son obligatorios.";
+            return;
+        }
+
+        if (!double.TryParse(nuevoDato, out double datoFloat))
+        {
+            mensaje = "El dato debe ser un número válido.";
+            return;
+        }
+
+        var nuevo = new Dictionary<string, object>
+        {
+            { "fkidvariable", int.Parse(nuevaVariableId) },
+            { "fkidindicador", int.Parse(nuevoIndicadorId) },
+            { "dato", datoFloat },
+            { "fkemailusuario", nuevoUsuarioEmail },
+            { "fechadato", nuevaFechaDato }
+        };
+
+        var creado = await servicioEntidad.CrearAsync(PROYECTO, TABLA, nuevo);
+
+        if (creado)
+        {
+            mensaje = "Registro creado correctamente.";
+            nuevaVariableId = string.Empty;
+            nuevoIndicadorId = string.Empty;
+            nuevoDato = string.Empty;
+            nuevoUsuarioEmail = string.Empty;
+            nuevaFechaDato = DateTime.Today;
+            await ObtenerRegistros();
+        }
+        else
+        {
+            mensaje = "Error al crear el registro.";
+        }
+    }
+
+    private void IniciarEdicion(Dictionary<string, object> reg)
+    {
+        editarId = reg["id"].ToString();
+        editarVariableId = reg["fkidvariable"].ToString();
+        editarIndicadorId = reg["fkidindicador"].ToString();
+        editarDato = reg["dato"].ToString();
+        editarUsuarioEmail = reg["fkemailusuario"].ToString();
+
+        if (reg["fechadato"] is DateTime fecha)
+        {
+            editarFechaDato = fecha;
+        }
+        else if (DateTime.TryParse(reg["fechadato"]?.ToString(), out DateTime parsed))
+        {
+            editarFechaDato = parsed;
+        }
+    }
+
+    private void CancelarEdicion()
+    {
+        editarId = string.Empty;
+        editarVariableId = string.Empty;
+        editarIndicadorId = string.Empty;
+        editarDato = string.Empty;
+        editarUsuarioEmail = string.Empty;
+        editarFechaDato = DateTime.Today;
+    }
+
+    private async Task GuardarEdicion(Dictionary<string, object> reg)
+    {
+        if (string.IsNullOrWhiteSpace(editarDato) || string.IsNullOrWhiteSpace(editarVariableId)
+            || string.IsNullOrWhiteSpace(editarIndicadorId) || string.IsNullOrWhiteSpace(editarUsuarioEmail))
+        {
+            mensaje = "Todos los campos son obligatorios para editar.";
+            return;
+        }
+
+        if (!double.TryParse(editarDato, out double datoEditado))
+        {
+            mensaje = "El dato debe ser un número válido.";
+            return;
+        }
+
+        var actualizado = new Dictionary<string, object>
+        {
+            { "fkidvariable", int.Parse(editarVariableId) },
+            { "fkidindicador", int.Parse(editarIndicadorId) },
+            { "dato", datoEditado },
+            { "fkemailusuario", editarUsuarioEmail },
+            { "fechadato", editarFechaDato }
+        };
+
+        try
+        {
+            bool resultado = await servicioEntidad.ActualizarAsync(PROYECTO, TABLA, "id", editarId, actualizado);
+
+            if (resultado)
+            {
+                mensaje = "Registro actualizado correctamente.";
+                await ObtenerRegistros();
+                CancelarEdicion();
+            }
+            else
+            {
+                mensaje = "Error al actualizar el registro.";
+            }
+        }
+        catch (Exception ex)
+        {
+            mensaje = $"Error de actualización: {ex.Message}";
+        }
+    }
+
+    private async Task EliminarRegistro(Dictionary<string, object> reg)
+    {
+        bool confirmar = await JSRuntime.InvokeAsync<bool>("confirm", $"¿Eliminar registro con ID {reg["id"]}?");
+        if (!confirmar) return;
+
+        var eliminado = await servicioEntidad.EliminarAsync(PROYECTO, TABLA, "id", reg["id"].ToString());
+        if (eliminado)
+        {
+            mensaje = "Registro eliminado correctamente.";
+            await ObtenerRegistros();
+        }
+        else
+        {
+            mensaje = "Error al eliminar.";
+        }
+    }
+
+    private string FormatFecha(object? fecha)
+    {
+        if (fecha is DateTime dt)
+            return dt.ToString("yyyy-MM-dd");
+
+        if (fecha is System.Text.Json.JsonElement jsonElement)
+        {
+            if (jsonElement.ValueKind == JsonValueKind.String &&
+                DateTime.TryParse(jsonElement.GetString(), out var parsedJson))
+            {
+                return parsedJson.ToString("yyyy-MM-dd");
+            }
+        }
+
+        if (DateTime.TryParse(fecha?.ToString(), out var parsed))
+            return parsed.ToString("yyyy-MM-dd");
+
+        return "Fecha inválida";
+    }
+}
