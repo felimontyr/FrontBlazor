@@ -235,10 +235,16 @@ else
                         <td>@BuscarDescripcion(numerales, indicador["fkidnumeral"])</td>
                         <td>@BuscarDescripcion(parrafos, indicador["fkidparagrafo"])</td>
                         <td>
-                            <button class="btn btn-sm btn-primary" @onclick="() => IniciarEdicion(indicador)">Editar</button>
-                            <button class="btn btn-sm btn-danger" @onclick="() => EliminarIndicador(indicador)">Eliminar</button>
-        </td>
-    }
+                            <div class="btn-group">
+                                <button class="btn btn-sm btn-primary" @onclick="() => IniciarEdicion(indicador)">Editar</button>
+                                <button class="btn btn-sm btn-danger" @onclick="() => EliminarIndicador(indicador)">Eliminar</button>
+                                <button class="btn btn-sm btn-info" @onclick="() => AbrirModalResponsables(indicador)">Responsables</button>
+                                <button class="btn btn-sm btn-warning" @onclick="() => AbrirModalVariables(indicador)">Variables</button>
+                                <button class="btn btn-sm btn-secondary" @onclick="() => AbrirModalRepresenVisualPorIndicador(indicador)">Rep. Visuales</button>
+                                <button class="btn btn-sm btn-info" @onclick="() => AbrirModalFuentesPorIndicador(indicador)">Fuentes</button>
+                            </div>
+                        </td>
+                    }
                     </tr>
                 }
             </tbody>
@@ -246,9 +252,307 @@ else
     }
 }
 
+<!-- Modal para gestionar responsables por indicador -->
+@if (mostrarModalResponsables)
+{
+    <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5);" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Responsables para Indicador: @(indicadorSeleccionado != null ? indicadorSeleccionado["nombre"] : "")</h5>
+                    <button type="button" class="btn-close" @onclick="CerrarModalResponsables"></button>
+                </div>
+                <div class="modal-body">
+                    @if (!string.IsNullOrEmpty(mensajeModal))
+                    {
+                        <div class="alert alert-info">@mensajeModal</div>
+                    }
+
+                    <div class="mb-3">
+                        <label>Responsable (Actor):</label>
+                        <select class="form-select mb-2" @bind="nuevoResponsable">
+                            <option value="">Seleccione un actor</option>
+                            @foreach (var actor in actores)
+                            {
+                                <option value="@actor["id"]">@actor["nombre"]</option>
+                            }
+                        </select>
+
+                        <label>Fecha Asignación:</label>
+                        <input type="date" class="form-control mb-3" @bind="nuevaFechaAsignacion" />
+
+                        <button class="btn btn-success" @onclick="CrearRelacion">Asignar</button>
+                    </div>
+
+                    <h4>Relaciones actuales</h4>
+                    @if (relaciones.Count == 0)
+                    {
+                        <p>No hay responsables asignados a este indicador.</p>
+                    }
+                    else
+                    {
+                        <ul class="list-group">
+                            @foreach (var relacion in relaciones)
+                            {
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <span>
+                                        Actor: @actores.FirstOrDefault(a => a["id"].ToString() == relacion["fkidresponsable"].ToString())?["nombre"]
+                                        - Fecha: @FormatFecha(relacion["fechaasignacion"])
+                                    </span>
+                                    <span>
+                                        <button class="btn btn-danger btn-sm" @onclick="() => EliminarRelacion(relacion)">Eliminar</button>
+                                    </span>
+                                </li>
+                            }
+                        </ul>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CerrarModalResponsables">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+<!-- Añade este código antes del cierre del formulario principal -->
+
+<!-- Modal para gestionar variables por indicador -->
+@if (mostrarModalVariables)
+{
+    <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5);" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Variables para Indicador: @(indicadorSeleccionado != null ? indicadorSeleccionado["nombre"] : "")</h5>
+                    <button type="button" class="btn-close" @onclick="CerrarModalVariables"></button>
+                </div>
+                <div class="modal-body">
+                    @if (!string.IsNullOrEmpty(mensajeModalVariables))
+                    {
+                        <div class="alert alert-info">@mensajeModalVariables</div>
+                    }
+
+                    <div class="mb-3">
+                        <label>Variable:</label>
+                        <select class="form-select mb-2" @bind="nuevaVariableId">
+                            <option value="">Seleccione una variable</option>
+                            @foreach (var variable in variables)
+                            {
+                                <option value="@variable["id"]">@variable["nombre"]</option>
+                            }
+                        </select>
+
+                        <label>Dato:</label>
+                        <input class="form-control mb-2" placeholder="Dato (número decimal)" @bind="nuevoDato" />
+                        
+                        <label>Usuario:</label>
+                        <select class="form-select mb-2" @bind="nuevoUsuarioEmail">
+                            <option value="">Seleccione un usuario</option>
+                            @foreach (var usuario in usuarios)
+                            {
+                                <option value="@usuario["email"]">@usuario["email"]</option>
+                            }
+                        </select>
+
+                        <label>Fecha del dato:</label>
+                        <input type="date" class="form-control mb-3" @bind="nuevaFechaDato" />
+
+                        <button class="btn btn-success" @onclick="CrearVariableIndicador">Asignar</button>
+                    </div>
+
+                    <h4>Variables asignadas</h4>
+                    @if (variablesIndicador.Count == 0)
+                    {
+                        <p>No hay variables asignadas a este indicador.</p>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Variable</th>
+                                        <th>Dato</th>
+                                        <th>Usuario</th>
+                                        <th>Fecha</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var varInd in variablesIndicador)
+                                    {
+                                        <tr>
+                                            @if (editandoVariableId == varInd["id"].ToString())
+                                            {
+                                                <td>
+                                                    <select class="form-select" @bind="editarVariableId">
+                                                        @foreach (var variable in variables)
+                                                        {
+                                                            <option value="@variable["id"]">@variable["nombre"]</option>
+                                                        }
+                                                    </select>
+                                                </td>
+                                                <td>
+                                                    <input class="form-control" @bind="editarDato" />
+                                                </td>
+                                                <td>
+                                                    <select class="form-select" @bind="editarUsuarioEmail">
+                                                        @foreach (var usuario in usuarios)
+                                                        {
+                                                            <option value="@usuario["email"]">@usuario["email"]</option>
+                                                        }
+                                                    </select>
+                                                </td>
+                                                <td>
+                                                    <input type="date" class="form-control" @bind="editarFechaDato" />
+                                                </td>
+                                                <td>
+                                                    <button class="btn btn-sm btn-success" @onclick="GuardarEdicionVariable">Guardar</button>
+                                                    <button class="btn btn-sm btn-secondary" @onclick="CancelarEdicionVariable">Cancelar</button>
+                                                </td>
+                                            }
+                                            else
+                                            {
+                                                <td>@ObtenerNombreVariable(varInd["fkidvariable"])</td>
+                                                <td>@varInd["dato"]</td>
+                                                <td>@varInd["fkemailusuario"]</td>
+                                                <td>@FormatFecha(varInd["fechadato"])</td>
+                                                <td>
+                                                    <button class="btn btn-sm btn-primary" @onclick="() => IniciarEdicionVariable(varInd)">Editar</button>
+                                                    <button class="btn btn-sm btn-danger" @onclick="() => EliminarVariableIndicador(varInd)">Eliminar</button>
+                                                </td>
+                                            }
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CerrarModalVariables">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+<!-- Modal para gestionar representaciones visuales por indicador -->
+@if (mostrarModalRepresenVisualPorIndicador)
+{
+    <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5);" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Representaciones Visuales para Indicador: @(indicadorSeleccionado != null ? indicadorSeleccionado["nombre"] : "")</h5>
+                    <button type="button" class="btn-close" @onclick="CerrarModalRepresenVisualPorIndicador"></button>
+                </div>
+                <div class="modal-body">
+                    @if (!string.IsNullOrEmpty(mensajeModalRepresenVisualPorIndicador))
+                    {
+                        <div class="alert alert-info">@mensajeModalRepresenVisualPorIndicador</div>
+                    }
+
+                    <div class="mb-3">
+                        <label>Representación Visual:</label>
+                        <select class="form-select mb-2" @bind="nuevoIdRepresenVisualPorIndicador">
+                            <option value="">Seleccione una representación visual</option>
+                            @foreach (var rep in represenvisuales)
+                            {
+                                <option value="@rep["id"]">@rep["nombre"]</option>
+                            }
+                        </select>
+
+                        <button class="btn btn-success" @onclick="AsignarRepresenVisualPorIndicador">Asignar</button>
+                    </div>
+
+                    <h4 class="mt-4">Relaciones existentes</h4>
+                    @if (relacionesRepresenVisual.Count == 0)
+                    {
+                        <p>No hay relaciones registradas para este indicador.</p>
+                    }
+                    else
+                    {
+                        <ul class="list-group">
+                            @foreach (var relacion in relacionesRepresenVisual)
+                            {
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <span>
+                                        @represenvisuales.FirstOrDefault(r => r["id"].ToString() == relacion["fkidrepresenvisual"].ToString())?["nombre"]
+                                    </span>
+                                    <button class="btn btn-danger btn-sm" @onclick="() => EliminarRepresenVisualPorIndicador(relacion)">Eliminar</button>
+                                </li>
+                            }
+                        </ul>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CerrarModalRepresenVisualPorIndicador">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+<!-- Modal para gestionar fuentes por indicador -->
+@if (mostrarModalFuentesPorIndicador)
+{
+    <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5);" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Fuentes para Indicador: @(indicadorSeleccionado != null ? indicadorSeleccionado["nombre"] : "")</h5>
+                    <button type="button" class="btn-close" @onclick="CerrarModalFuentesPorIndicador"></button>
+                </div>
+                <div class="modal-body">
+                    @if (!string.IsNullOrEmpty(mensajeModalFuentesPorIndicador))
+                    {
+                        <div class="alert alert-info">@mensajeModalFuentesPorIndicador</div>
+                    }
+
+                    <div class="mb-3">
+                        <label>Fuente:</label>
+                        <select class="form-select mb-2" @bind="nuevoIdFuente">
+                            <option value="">Seleccione una fuente</option>
+                            @foreach (var fuente in fuentes)
+                            {
+                                <option value="@fuente["id"]">@fuente["nombre"]</option>
+                            }
+                        </select>
+
+                        <button class="btn btn-success" @onclick="AsignarFuentePorIndicador">Asignar</button>
+                    </div>
+
+                    <h4 class="mt-4">Fuentes asignadas</h4>
+                    @if (relacionesFuentes.Count == 0)
+                    {
+                        <p>No hay fuentes asignadas a este indicador.</p>
+                    }
+                    else
+                    {
+                        <ul class="list-group">
+                            @foreach (var relacion in relacionesFuentes)
+                            {
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <span>
+                                        @fuentes.FirstOrDefault(f => f["id"].ToString() == relacion["fkidfuente"].ToString())?["nombre"]
+                                    </span>
+                                    <button class="btn btn-danger btn-sm" @onclick="() => EliminarFuentePorIndicador(relacion)">Eliminar</button>
+                                </li>
+                            }
+                        </ul>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CerrarModalFuentesPorIndicador">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private const string PROYECTO = "proyecto";
     private const string TABLA = "indicador";
+    private const string TABLA_RESPONSABLES = "responsablesporindicador";
 
     private List<Dictionary<string, object>> indicadores = new();
     private List<Dictionary<string, object>> tiposIndicador = new();
@@ -259,6 +563,8 @@ else
     private List<Dictionary<string, object>> literales = new();
     private List<Dictionary<string, object>> numerales = new();
     private List<Dictionary<string, object>> parrafos = new();
+    private List<Dictionary<string, object>> actores = new();
+    private List<Dictionary<string, object>> relaciones = new();
 
     private string nuevoCodigo = "";
     private string nuevoNombre = "";
@@ -290,9 +596,52 @@ else
     private string indicadorEditarNumeral = "";
     private string indicadorEditarParagrafo = "";
 
+    // Variables para el modal de responsables
+    private bool mostrarModalResponsables = false;
+    private Dictionary<string, object>? indicadorSeleccionado = null;
+    private string nuevoResponsable = string.Empty;
+    private DateTime nuevaFechaAsignacion = DateTime.Today;
+    private string mensajeModal = string.Empty;
+    private Dictionary<string, object>? editandoRelacion = null;
+    private DateTime nuevaFechaEdicion = DateTime.Today;
+
+     private string mensaje = string.Empty;
 
     private string? errorMensaje;
     private bool datosCargados = false;
+
+ // Variables para el modal de variables
+    private bool mostrarModalVariables = false;
+    private string nuevaVariableId = string.Empty;
+    private string nuevoDato = string.Empty;
+    private string nuevoUsuarioEmail = string.Empty;
+    private DateTime nuevaFechaDato = DateTime.Today;
+    private string mensajeModalVariables = string.Empty;
+    private string editandoVariableId = string.Empty;
+    private string editarVariableId = string.Empty;
+    private string editarDato = string.Empty;
+    private string editarUsuarioEmail = string.Empty;
+    private DateTime editarFechaDato = DateTime.Today;
+    private List<Dictionary<string, object>> variables = new();
+    private List<Dictionary<string, object>> usuarios = new();
+    private List<Dictionary<string, object>> variablesIndicador = new();
+
+   //Variables de Representación Visual
+ private const string TABLA_REPRESENVISUAL_INDICADOR = "represenvisualporindicador";
+private bool mostrarModalRepresenVisualPorIndicador = false;
+private List<Dictionary<string, object>> represenvisuales = new();
+private List<Dictionary<string, object>> relacionesRepresenVisual = new();
+private string nuevoIdRepresenVisualPorIndicador = string.Empty;
+private string mensajeModalRepresenVisualPorIndicador = string.Empty;
+
+    // Variables for Fuentes modal
+private const string TABLA_FUENTES_INDICADOR = "fuentesporindicador";
+private bool mostrarModalFuentesPorIndicador = false;
+private List<Dictionary<string, object>> fuentes = new();
+private List<Dictionary<string, object>> relacionesFuentes = new();
+private string nuevoIdFuente = string.Empty;
+private string mensajeModalFuentesPorIndicador = string.Empty;
+
 
     protected override async Task OnInitializedAsync()
     {
@@ -311,6 +660,7 @@ else
             await CargarTabla("literal", literales);
             await CargarTabla("numeral", numerales);
             await CargarTabla("paragrafo", parrafos);
+            await CargarTabla("actor", actores);
             await ObtenerIndicadores();
         }
         catch (Exception ex)
@@ -497,4 +847,554 @@ else
             errorMensaje = "Error al eliminar el indicador.";
         }
     }
+
+    private async Task AbrirModalResponsables(Dictionary<string, object> indicador)
+    {
+        indicadorSeleccionado = indicador;
+        mostrarModalResponsables = true;
+        mensajeModal = "";
+        nuevoResponsable = "";
+        nuevaFechaAsignacion = DateTime.Today;
+        editandoRelacion = null;
+        
+        // Cargar relaciones para este indicador
+        await ObtenerRelacionesPorIndicador(indicador["id"].ToString());
+    }
+
+    private void CerrarModalResponsables()
+    {
+        mostrarModalResponsables = false;
+        indicadorSeleccionado = null;
+        relaciones.Clear();
+    }
+
+    private async Task ObtenerRelacionesPorIndicador(string indicadorId)
+    {
+        try {
+            var todasLasRelaciones = await servicioEntidad.ObtenerTodosAsync(PROYECTO, TABLA_RESPONSABLES) ?? new();
+            relaciones = todasLasRelaciones
+                .Where(r => r["fkidindicador"].ToString() == indicadorId)
+                .ToList();
+        }
+        catch (Exception ex) {
+            mensajeModal = $"Error al cargar responsables: {ex.Message}";
+        }
+    }
+
+    private string FormatFecha(object? fecha)
+    {
+        if (fecha is DateTime dt)
+            return dt.ToString("yyyy-MM-dd");
+
+        if (DateTime.TryParse(fecha?.ToString(), out var parsed))
+            return parsed.ToString("yyyy-MM-dd");
+
+        return "Fecha inválida";
+    }
+
+  private async Task CrearRelacion()
+{
+    mensajeModal = string.Empty;
+
+    if (string.IsNullOrWhiteSpace(nuevoResponsable) || indicadorSeleccionado == null)
+    {
+        mensajeModal = "Debe seleccionar un actor.";
+        return;
+    }
+
+    string indicadorId = indicadorSeleccionado["id"].ToString();
+
+    if (relaciones.Any(r =>
+        r["fkidresponsable"].ToString() == nuevoResponsable &&
+        r["fkidindicador"].ToString() == indicadorId))
+    {
+        mensajeModal = "La relación ya existe.";
+        return;
+    }
+
+    try
+    {
+        var nuevaRelacion = new Dictionary<string, object>
+        {
+            { "fkidresponsable", nuevoResponsable },
+            { "fkidindicador", indicadorId },
+            { "fechaasignacion", nuevaFechaAsignacion.ToString("yyyy-MM-dd") }
+        };
+
+        var resultado = await servicioEntidad.CrearAsync(PROYECTO, TABLA_RESPONSABLES, nuevaRelacion);
+
+        if (resultado)
+        {
+            mensajeModal = "Responsable asignado correctamente.";
+            nuevoResponsable = string.Empty;
+            nuevaFechaAsignacion = DateTime.Today;
+            await ObtenerRelacionesPorIndicador(indicadorId);
+        }
+        else
+        {
+            mensajeModal = "Error al crear la relación.";
+        }
+    }
+    catch (Exception ex)
+    {
+        mensajeModal = $"Error crítico: {ex.Message}";
+    }
 }
+
+ private async Task EliminarRelacion(Dictionary<string, object> relacion)
+{
+    bool confirmar = await JSRuntime.InvokeAsync<bool>("confirm",
+        $"¿Deseas eliminar la relación de {relacion["fkidresponsable"]} con indicador {relacion["fkidindicador"]}?");
+
+    if (!confirmar) return;
+
+    try 
+    {
+        var parametros = new Dictionary<string, object>
+        {
+            { "fkidresponsable", relacion["fkidresponsable"] },
+            { "fkidindicador", relacion["fkidindicador"] }
+        };
+
+        // Cambiado: Usar TABLA_RESPONSABLES en lugar de TABLA
+        var resultado = await servicioEntidad.EjecutarProcedimientoAsync(
+            PROYECTO, 
+            TABLA_RESPONSABLES, 
+            "sp_eliminar_responsablesporindicador", 
+            parametros
+        );
+
+        if (resultado != null)
+        {
+            mensajeModal = "Relación eliminada correctamente.";
+            await ObtenerRelacionesPorIndicador(relacion["fkidindicador"].ToString());
+        }
+        else
+        {
+            mensajeModal = "Error al eliminar la relación.";
+        }
+    }
+    catch (Exception ex)
+    {
+        mensajeModal = $"Error al eliminar la relación: {ex.Message}";
+        await JSRuntime.InvokeVoidAsync("console.error", "Error al eliminar relación:", ex.Message);
+    }
+}
+
+ private async Task AbrirModalVariables(Dictionary<string, object> indicador)
+    {
+        indicadorSeleccionado = indicador;
+        mostrarModalVariables = true;
+        mensajeModalVariables = "";
+        nuevaVariableId = "";
+        nuevoDato = "";
+        nuevoUsuarioEmail = "";
+        nuevaFechaDato = DateTime.Today;
+        
+        // Cargar datos necesarios
+        variables = await servicioEntidad.ObtenerTodosAsync(PROYECTO, "variable") ?? new();
+        usuarios = await servicioEntidad.ObtenerTodosAsync(PROYECTO, "usuario") ?? new();
+        await ObtenerVariablesPorIndicador(indicador["id"].ToString());
+    }
+
+    private void CerrarModalVariables()
+    {
+        mostrarModalVariables = false;
+        indicadorSeleccionado = null;
+        variablesIndicador.Clear();
+    }
+
+    private async Task ObtenerVariablesPorIndicador(string indicadorId)
+    {
+        try 
+        {
+            var todasLasVariables = await servicioEntidad.ObtenerTodosAsync(PROYECTO, "variablesporindicador") ?? new();
+            variablesIndicador = todasLasVariables
+                .Where(v => v["fkidindicador"].ToString() == indicadorId)
+                .ToList();
+        }
+        catch (Exception ex) 
+        {
+            mensajeModalVariables = $"Error al cargar variables: {ex.Message}";
+        }
+    }
+
+    private async Task CrearVariableIndicador()
+    {
+        mensajeModalVariables = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(nuevaVariableId) || string.IsNullOrWhiteSpace(nuevoDato) || 
+            string.IsNullOrWhiteSpace(nuevoUsuarioEmail) || indicadorSeleccionado == null)
+        {
+            mensajeModalVariables = "Todos los campos son obligatorios.";
+            return;
+        }
+
+        if (!double.TryParse(nuevoDato, out double datoFloat))
+        {
+            mensajeModalVariables = "El dato debe ser un número válido.";
+            return;
+        }
+
+        try
+        {
+            var nuevaVariable = new Dictionary<string, object>
+            {
+                { "fkidvariable", int.Parse(nuevaVariableId) },
+                { "fkidindicador", int.Parse(indicadorSeleccionado["id"].ToString()) },
+                { "dato", datoFloat },
+                { "fkemailusuario", nuevoUsuarioEmail },
+                { "fechadato", nuevaFechaDato.ToString("yyyy-MM-dd") }
+            };
+
+            var resultado = await servicioEntidad.CrearAsync(PROYECTO, "variablesporindicador", nuevaVariable);
+
+            if (resultado)
+            {
+                mensajeModalVariables = "Variable asignada correctamente.";
+                nuevaVariableId = string.Empty;
+                nuevoDato = string.Empty;
+                nuevoUsuarioEmail = string.Empty;
+                nuevaFechaDato = DateTime.Today;
+                await ObtenerVariablesPorIndicador(indicadorSeleccionado["id"].ToString());
+            }
+            else
+            {
+                mensajeModalVariables = "Error al asignar la variable.";
+            }
+        }
+        catch (Exception ex)
+        {
+            mensajeModalVariables = $"Error: {ex.Message}";
+        }
+    }
+
+    private void IniciarEdicionVariable(Dictionary<string, object> variable)
+    {
+        editandoVariableId = variable["id"].ToString();
+        editarVariableId = variable["fkidvariable"].ToString();
+        editarDato = variable["dato"].ToString();
+        editarUsuarioEmail = variable["fkemailusuario"].ToString();
+        editarFechaDato = DateTime.Parse(variable["fechadato"].ToString());
+    }
+
+    private void CancelarEdicionVariable()
+    {
+        editandoVariableId = string.Empty;
+    }
+
+    private async Task GuardarEdicionVariable()
+    {
+        if (!double.TryParse(editarDato, out double datoEditado))
+        {
+            mensajeModalVariables = "El dato debe ser un número válido.";
+            return;
+        }
+
+        var actualizado = new Dictionary<string, object>
+        {
+            { "fkidvariable", int.Parse(editarVariableId) },
+            { "fkidindicador", int.Parse(indicadorSeleccionado["id"].ToString()) },
+            { "dato", datoEditado },
+            { "fkemailusuario", editarUsuarioEmail },
+            { "fechadato", editarFechaDato.ToString("yyyy-MM-dd") }
+        };
+
+        try
+        {
+            bool resultado = await servicioEntidad.ActualizarAsync(
+                PROYECTO, 
+                "variablesporindicador", 
+                "id", 
+                editandoVariableId, 
+                actualizado
+            );
+
+            if (resultado)
+            {
+                mensajeModalVariables = "Variable actualizada correctamente.";
+                await ObtenerVariablesPorIndicador(indicadorSeleccionado["id"].ToString());
+                CancelarEdicionVariable();
+            }
+            else
+            {
+                mensajeModalVariables = "Error al actualizar la variable.";
+            }
+        }
+        catch (Exception ex)
+        {
+            mensajeModalVariables = $"Error: {ex.Message}";
+        }
+    }
+
+    private async Task EliminarVariableIndicador(Dictionary<string, object> variable)
+    {
+        bool confirmar = await JSRuntime.InvokeAsync<bool>("confirm", 
+            $"¿Desea eliminar esta variable del indicador?");
+
+        if (!confirmar) return;
+
+        try
+        {
+            bool resultado = await servicioEntidad.EliminarAsync(
+                PROYECTO,
+                "variablesporindicador",
+                "id",
+                variable["id"].ToString()
+            );
+
+            if (resultado)
+            {
+                mensajeModalVariables = "Variable eliminada correctamente.";
+                await ObtenerVariablesPorIndicador(indicadorSeleccionado["id"].ToString());
+            }
+            else
+            {
+                mensajeModalVariables = "Error al eliminar la variable.";
+            }
+        }
+        catch (Exception ex)
+        {
+            mensajeModalVariables = $"Error al eliminar: {ex.Message}";
+        }
+    }
+
+//metodos para la representación visual
+private async Task AbrirModalRepresenVisualPorIndicador(Dictionary<string, object> indicador)
+{
+    indicadorSeleccionado = indicador;
+    mostrarModalRepresenVisualPorIndicador = true;
+    mensajeModalRepresenVisualPorIndicador = "";
+    nuevoIdRepresenVisualPorIndicador = "";
+    
+    try
+    {
+        represenvisuales = await servicioEntidad.ObtenerTodosAsync(PROYECTO, "represenvisual") ?? new();
+        await ObtenerRelacionesRepresenVisual(indicador["id"].ToString());
+    }
+    catch (Exception ex)
+    {
+        mensajeModalRepresenVisualPorIndicador = $"Error al cargar datos: {ex.Message}";
+    }
+}
+
+private async Task ObtenerRelacionesRepresenVisual(string indicadorId)
+{
+    try 
+    {
+        var todasLasRelaciones = await servicioEntidad.ObtenerTodosAsync(PROYECTO, TABLA_REPRESENVISUAL_INDICADOR) ?? new();
+        relacionesRepresenVisual = todasLasRelaciones
+            .Where(r => r["fkidindicador"].ToString() == indicadorId)
+            .ToList();
+    }
+    catch (Exception ex)
+    {
+        mensajeModalRepresenVisualPorIndicador = $"Error al cargar relaciones: {ex.Message}";
+    }
+}
+
+private async Task AsignarRepresenVisualPorIndicador()
+{
+    mensajeModalRepresenVisualPorIndicador = string.Empty;
+
+    if (string.IsNullOrWhiteSpace(nuevoIdRepresenVisualPorIndicador))
+    {
+        mensajeModalRepresenVisualPorIndicador = "Debe seleccionar una representación visual.";
+        return;
+    }
+
+    if (relacionesRepresenVisual.Any(r => 
+        r["fkidrepresenvisual"].ToString() == nuevoIdRepresenVisualPorIndicador))
+    {
+        mensajeModalRepresenVisualPorIndicador = "La relación ya existe.";
+        return;
+    }
+
+    var parametros = new Dictionary<string, object>
+    {
+        { "nombreSP", "sp_insertar_represenvisualporindicador" },
+        { "fkidindicador", int.Parse(indicadorSeleccionado["id"].ToString()) },
+        { "fkidrepresenvisual", int.Parse(nuevoIdRepresenVisualPorIndicador) }
+    };
+
+    var resultado = await servicioEntidad.EjecutarProcedimientoAsync(
+        PROYECTO, 
+        TABLA_REPRESENVISUAL_INDICADOR,
+        "sp_insertar_represenvisualporindicador", 
+        parametros
+    );
+
+    if (resultado != null)
+    {
+        mensajeModalRepresenVisualPorIndicador = "Relación creada correctamente.";
+        nuevoIdRepresenVisualPorIndicador = string.Empty;
+        await ObtenerRelacionesRepresenVisual(indicadorSeleccionado["id"].ToString());
+    }
+    else
+    {
+        mensajeModalRepresenVisualPorIndicador = "Error al crear la relación.";
+    }
+}
+
+private async Task EliminarRepresenVisualPorIndicador(Dictionary<string, object> relacion)
+{
+    bool confirmar = await JSRuntime.InvokeAsync<bool>("confirm",
+        $"¿Desea eliminar esta representación visual del indicador?");
+
+    if (!confirmar) return;
+
+    var parametros = new Dictionary<string, object>
+    {
+        { "nombreSP", "sp_eliminar_represenvisualporindicador" },
+        { "fkidindicador", int.Parse(relacion["fkidindicador"].ToString()) },
+        { "fkidrepresenvisual", int.Parse(relacion["fkidrepresenvisual"].ToString()) }
+    };
+
+    var resultado = await servicioEntidad.EjecutarProcedimientoAsync(
+        PROYECTO,
+        TABLA_REPRESENVISUAL_INDICADOR,
+        "sp_eliminar_represenvisualporindicador",
+        parametros
+    );
+
+    if (resultado != null)
+    {
+        mensajeModalRepresenVisualPorIndicador = "Relación eliminada correctamente.";
+        await ObtenerRelacionesRepresenVisual(indicadorSeleccionado["id"].ToString());
+    }
+    else
+    {
+        mensajeModalRepresenVisualPorIndicador = "Error al eliminar la relación.";
+    }
+}
+
+private void CerrarModalRepresenVisualPorIndicador()
+{
+    mostrarModalRepresenVisualPorIndicador = false;
+    indicadorSeleccionado = null;
+    relacionesRepresenVisual.Clear();
+}
+private string ObtenerNombreVariable(object variableId)
+{
+    return variables
+        .FirstOrDefault(v => v["id"].ToString() == variableId.ToString())?["nombre"]?.ToString() 
+        ?? "N/A";
+}
+
+//metodos para fuentes por indicador
+private async Task AbrirModalFuentesPorIndicador(Dictionary<string, object> indicador)
+{
+    indicadorSeleccionado = indicador;
+    mostrarModalFuentesPorIndicador = true;
+    mensajeModalFuentesPorIndicador = "";
+    nuevoIdFuente = "";
+    
+    try
+    {
+        fuentes = await servicioEntidad.ObtenerTodosAsync(PROYECTO, "fuente") ?? new();
+        await ObtenerRelacionesFuentes(indicador["id"].ToString());
+    }
+    catch (Exception ex)
+    {
+        mensajeModalFuentesPorIndicador = $"Error al cargar datos: {ex.Message}";
+    }
+}
+
+private async Task ObtenerRelacionesFuentes(string indicadorId)
+{
+    try 
+    {
+        var todasLasRelaciones = await servicioEntidad.ObtenerTodosAsync(PROYECTO, TABLA_FUENTES_INDICADOR) ?? new();
+        relacionesFuentes = todasLasRelaciones
+            .Where(r => r["fkidindicador"].ToString() == indicadorId)
+            .ToList();
+    }
+    catch (Exception ex)
+    {
+        mensajeModalFuentesPorIndicador = $"Error al cargar relaciones: {ex.Message}";
+    }
+}
+
+private async Task AsignarFuentePorIndicador()
+{
+    mensajeModalFuentesPorIndicador = string.Empty;
+
+    if (string.IsNullOrWhiteSpace(nuevoIdFuente))
+    {
+        mensajeModalFuentesPorIndicador = "Debe seleccionar una fuente.";
+        return;
+    }
+
+    if (relacionesFuentes.Any(r => 
+        r["fkidfuente"].ToString() == nuevoIdFuente))
+    {
+        mensajeModalFuentesPorIndicador = "La relación ya existe.";
+        return;
+    }
+
+    var parametros = new Dictionary<string, object>
+    {
+        { "nombreSP", "sp_insertar_fuentesporindicador" },
+        { "fkidfuente", int.Parse(nuevoIdFuente) },
+        { "fkidindicador", int.Parse(indicadorSeleccionado["id"].ToString()) }
+    };
+
+    var resultado = await servicioEntidad.EjecutarProcedimientoAsync(
+        PROYECTO, 
+        TABLA_FUENTES_INDICADOR,
+        "sp_insertar_fuentesporindicador", 
+        parametros
+    );
+
+    if (resultado != null)
+    {
+        mensajeModalFuentesPorIndicador = "Fuente asignada correctamente.";
+        nuevoIdFuente = string.Empty;
+        await ObtenerRelacionesFuentes(indicadorSeleccionado["id"].ToString());
+    }
+    else
+    {
+        mensajeModalFuentesPorIndicador = "Error al asignar la fuente.";
+    }
+}
+
+private async Task EliminarFuentePorIndicador(Dictionary<string, object> relacion)
+{
+    bool confirmar = await JSRuntime.InvokeAsync<bool>("confirm",
+        $"¿Desea eliminar esta fuente del indicador?");
+
+    if (!confirmar) return;
+
+    var parametros = new Dictionary<string, object>
+    {
+        { "nombreSP", "sp_eliminar_fuentesporindicador" },
+        { "fkidfuente", int.Parse(relacion["fkidfuente"].ToString()) },
+        { "fkidindicador", int.Parse(relacion["fkidindicador"].ToString()) }
+    };
+
+    var resultado = await servicioEntidad.EjecutarProcedimientoAsync(
+        PROYECTO,
+        TABLA_FUENTES_INDICADOR,
+        "sp_eliminar_fuentesporindicador",
+        parametros
+    );
+
+    if (resultado != null)
+    {
+        mensajeModalFuentesPorIndicador = "Fuente eliminada correctamente.";
+        await ObtenerRelacionesFuentes(indicadorSeleccionado["id"].ToString());
+    }
+    else
+    {
+        mensajeModalFuentesPorIndicador = "Error al eliminar la fuente.";
+    }
+}
+
+private void CerrarModalFuentesPorIndicador()
+{
+    mostrarModalFuentesPorIndicador = false;
+    indicadorSeleccionado = null;
+    relacionesFuentes.Clear();
+}
+}
+
