@@ -238,10 +238,9 @@ else
                             <div class="btn-group">
                                 <button class="btn btn-sm btn-primary" @onclick="() => IniciarEdicion(indicador)">Editar</button>
                                 <button class="btn btn-sm btn-danger" @onclick="() => EliminarIndicador(indicador)">Eliminar</button>
-                                <button class="btn btn-sm btn-info" @onclick="() => AbrirModalResponsables(indicador)">Responsables</button>
-                                <button class="btn btn-sm btn-warning" @onclick="() => AbrirModalVariables(indicador)">Variables</button>
-                                <button class="btn btn-sm btn-secondary" @onclick="() => AbrirModalRepresenVisualPorIndicador(indicador)">Rep. Visuales</button>
-                                <button class="btn btn-sm btn-info" @onclick="() => AbrirModalFuentesPorIndicador(indicador)">Fuentes</button>
+                                <button class="btn btn-sm btn-info" @onclick="() => AbrirModalResponsables(indicador)">Asignar Responsables</button>
+                                <button class="btn btn-sm btn-secondary" @onclick="() => AbrirModalRepresenVisualPorIndicador(indicador)">Asignar Rep. Visuales</button>
+                                <button class="btn btn-sm btn-info" @onclick="() => AbrirModalFuentesPorIndicador(indicador)">Asignar Fuentes</button>
                             </div>
                         </td>
                     }
@@ -314,128 +313,7 @@ else
         </div>
     </div>
 }
-<!-- Añade este código antes del cierre del formulario principal -->
 
-<!-- Modal para gestionar variables por indicador -->
-@if (mostrarModalVariables)
-{
-    <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5);" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Variables para Indicador: @(indicadorSeleccionado != null ? indicadorSeleccionado["nombre"] : "")</h5>
-                    <button type="button" class="btn-close" @onclick="CerrarModalVariables"></button>
-                </div>
-                <div class="modal-body">
-                    @if (!string.IsNullOrEmpty(mensajeModalVariables))
-                    {
-                        <div class="alert alert-info">@mensajeModalVariables</div>
-                    }
-
-                    <div class="mb-3">
-                        <label>Variable:</label>
-                        <select class="form-select mb-2" @bind="nuevaVariableId">
-                            <option value="">Seleccione una variable</option>
-                            @foreach (var variable in variables)
-                            {
-                                <option value="@variable["id"]">@variable["nombre"]</option>
-                            }
-                        </select>
-
-                        <label>Dato:</label>
-                        <input class="form-control mb-2" placeholder="Dato (número decimal)" @bind="nuevoDato" />
-                        
-                        <label>Usuario:</label>
-                        <select class="form-select mb-2" @bind="nuevoUsuarioEmail">
-                            <option value="">Seleccione un usuario</option>
-                            @foreach (var usuario in usuarios)
-                            {
-                                <option value="@usuario["email"]">@usuario["email"]</option>
-                            }
-                        </select>
-
-                        <label>Fecha del dato:</label>
-                        <input type="date" class="form-control mb-3" @bind="nuevaFechaDato" />
-
-                        <button class="btn btn-success" @onclick="CrearVariableIndicador">Asignar</button>
-                    </div>
-
-                    <h4>Variables asignadas</h4>
-                    @if (variablesIndicador.Count == 0)
-                    {
-                        <p>No hay variables asignadas a este indicador.</p>
-                    }
-                    else
-                    {
-                        <div class="table-responsive">
-                            <table class="table table-striped">
-                                <thead>
-                                    <tr>
-                                        <th>Variable</th>
-                                        <th>Dato</th>
-                                        <th>Usuario</th>
-                                        <th>Fecha</th>
-                                        <th>Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var varInd in variablesIndicador)
-                                    {
-                                        <tr>
-                                            @if (editandoVariableId == varInd["id"].ToString())
-                                            {
-                                                <td>
-                                                    <select class="form-select" @bind="editarVariableId">
-                                                        @foreach (var variable in variables)
-                                                        {
-                                                            <option value="@variable["id"]">@variable["nombre"]</option>
-                                                        }
-                                                    </select>
-                                                </td>
-                                                <td>
-                                                    <input class="form-control" @bind="editarDato" />
-                                                </td>
-                                                <td>
-                                                    <select class="form-select" @bind="editarUsuarioEmail">
-                                                        @foreach (var usuario in usuarios)
-                                                        {
-                                                            <option value="@usuario["email"]">@usuario["email"]</option>
-                                                        }
-                                                    </select>
-                                                </td>
-                                                <td>
-                                                    <input type="date" class="form-control" @bind="editarFechaDato" />
-                                                </td>
-                                                <td>
-                                                    <button class="btn btn-sm btn-success" @onclick="GuardarEdicionVariable">Guardar</button>
-                                                    <button class="btn btn-sm btn-secondary" @onclick="CancelarEdicionVariable">Cancelar</button>
-                                                </td>
-                                            }
-                                            else
-                                            {
-                                                <td>@ObtenerNombreVariable(varInd["fkidvariable"])</td>
-                                                <td>@varInd["dato"]</td>
-                                                <td>@varInd["fkemailusuario"]</td>
-                                                <td>@FormatFecha(varInd["fechadato"])</td>
-                                                <td>
-                                                    <button class="btn btn-sm btn-primary" @onclick="() => IniciarEdicionVariable(varInd)">Editar</button>
-                                                    <button class="btn btn-sm btn-danger" @onclick="() => EliminarVariableIndicador(varInd)">Eliminar</button>
-                                                </td>
-                                            }
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
-                        </div>
-                    }
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="CerrarModalVariables">Cerrar</button>
-                </div>
-            </div>
-        </div>
-    </div>
-}
 <!-- Modal para gestionar representaciones visuales por indicador -->
 @if (mostrarModalRepresenVisualPorIndicador)
 {
@@ -609,22 +487,6 @@ else
 
     private string? errorMensaje;
     private bool datosCargados = false;
-
- // Variables para el modal de variables
-    private bool mostrarModalVariables = false;
-    private string nuevaVariableId = string.Empty;
-    private string nuevoDato = string.Empty;
-    private string nuevoUsuarioEmail = string.Empty;
-    private DateTime nuevaFechaDato = DateTime.Today;
-    private string mensajeModalVariables = string.Empty;
-    private string editandoVariableId = string.Empty;
-    private string editarVariableId = string.Empty;
-    private string editarDato = string.Empty;
-    private string editarUsuarioEmail = string.Empty;
-    private DateTime editarFechaDato = DateTime.Today;
-    private List<Dictionary<string, object>> variables = new();
-    private List<Dictionary<string, object>> usuarios = new();
-    private List<Dictionary<string, object>> variablesIndicador = new();
 
    //Variables de Representación Visual
  private const string TABLA_REPRESENVISUAL_INDICADOR = "represenvisualporindicador";
@@ -981,184 +843,6 @@ private string mensajeModalFuentesPorIndicador = string.Empty;
     }
 }
 
- private async Task AbrirModalVariables(Dictionary<string, object> indicador)
-    {
-        indicadorSeleccionado = indicador;
-        mostrarModalVariables = true;
-        mensajeModalVariables = "";
-        nuevaVariableId = "";
-        nuevoDato = "";
-        nuevoUsuarioEmail = "";
-        nuevaFechaDato = DateTime.Today;
-        
-        // Cargar datos necesarios
-        variables = await servicioEntidad.ObtenerTodosAsync(PROYECTO, "variable") ?? new();
-        usuarios = await servicioEntidad.ObtenerTodosAsync(PROYECTO, "usuario") ?? new();
-        await ObtenerVariablesPorIndicador(indicador["id"].ToString());
-    }
-
-    private void CerrarModalVariables()
-    {
-        mostrarModalVariables = false;
-        indicadorSeleccionado = null;
-        variablesIndicador.Clear();
-    }
-
-    private async Task ObtenerVariablesPorIndicador(string indicadorId)
-    {
-        try 
-        {
-            var todasLasVariables = await servicioEntidad.ObtenerTodosAsync(PROYECTO, "variablesporindicador") ?? new();
-            variablesIndicador = todasLasVariables
-                .Where(v => v["fkidindicador"].ToString() == indicadorId)
-                .ToList();
-        }
-        catch (Exception ex) 
-        {
-            mensajeModalVariables = $"Error al cargar variables: {ex.Message}";
-        }
-    }
-
-    private async Task CrearVariableIndicador()
-    {
-        mensajeModalVariables = string.Empty;
-
-        if (string.IsNullOrWhiteSpace(nuevaVariableId) || string.IsNullOrWhiteSpace(nuevoDato) || 
-            string.IsNullOrWhiteSpace(nuevoUsuarioEmail) || indicadorSeleccionado == null)
-        {
-            mensajeModalVariables = "Todos los campos son obligatorios.";
-            return;
-        }
-
-        if (!double.TryParse(nuevoDato, out double datoFloat))
-        {
-            mensajeModalVariables = "El dato debe ser un número válido.";
-            return;
-        }
-
-        try
-        {
-            var nuevaVariable = new Dictionary<string, object>
-            {
-                { "fkidvariable", int.Parse(nuevaVariableId) },
-                { "fkidindicador", int.Parse(indicadorSeleccionado["id"].ToString()) },
-                { "dato", datoFloat },
-                { "fkemailusuario", nuevoUsuarioEmail },
-                { "fechadato", nuevaFechaDato.ToString("yyyy-MM-dd") }
-            };
-
-            var resultado = await servicioEntidad.CrearAsync(PROYECTO, "variablesporindicador", nuevaVariable);
-
-            if (resultado)
-            {
-                mensajeModalVariables = "Variable asignada correctamente.";
-                nuevaVariableId = string.Empty;
-                nuevoDato = string.Empty;
-                nuevoUsuarioEmail = string.Empty;
-                nuevaFechaDato = DateTime.Today;
-                await ObtenerVariablesPorIndicador(indicadorSeleccionado["id"].ToString());
-            }
-            else
-            {
-                mensajeModalVariables = "Error al asignar la variable.";
-            }
-        }
-        catch (Exception ex)
-        {
-            mensajeModalVariables = $"Error: {ex.Message}";
-        }
-    }
-
-    private void IniciarEdicionVariable(Dictionary<string, object> variable)
-    {
-        editandoVariableId = variable["id"].ToString();
-        editarVariableId = variable["fkidvariable"].ToString();
-        editarDato = variable["dato"].ToString();
-        editarUsuarioEmail = variable["fkemailusuario"].ToString();
-        editarFechaDato = DateTime.Parse(variable["fechadato"].ToString());
-    }
-
-    private void CancelarEdicionVariable()
-    {
-        editandoVariableId = string.Empty;
-    }
-
-    private async Task GuardarEdicionVariable()
-    {
-        if (!double.TryParse(editarDato, out double datoEditado))
-        {
-            mensajeModalVariables = "El dato debe ser un número válido.";
-            return;
-        }
-
-        var actualizado = new Dictionary<string, object>
-        {
-            { "fkidvariable", int.Parse(editarVariableId) },
-            { "fkidindicador", int.Parse(indicadorSeleccionado["id"].ToString()) },
-            { "dato", datoEditado },
-            { "fkemailusuario", editarUsuarioEmail },
-            { "fechadato", editarFechaDato.ToString("yyyy-MM-dd") }
-        };
-
-        try
-        {
-            bool resultado = await servicioEntidad.ActualizarAsync(
-                PROYECTO, 
-                "variablesporindicador", 
-                "id", 
-                editandoVariableId, 
-                actualizado
-            );
-
-            if (resultado)
-            {
-                mensajeModalVariables = "Variable actualizada correctamente.";
-                await ObtenerVariablesPorIndicador(indicadorSeleccionado["id"].ToString());
-                CancelarEdicionVariable();
-            }
-            else
-            {
-                mensajeModalVariables = "Error al actualizar la variable.";
-            }
-        }
-        catch (Exception ex)
-        {
-            mensajeModalVariables = $"Error: {ex.Message}";
-        }
-    }
-
-    private async Task EliminarVariableIndicador(Dictionary<string, object> variable)
-    {
-        bool confirmar = await JSRuntime.InvokeAsync<bool>("confirm", 
-            $"¿Desea eliminar esta variable del indicador?");
-
-        if (!confirmar) return;
-
-        try
-        {
-            bool resultado = await servicioEntidad.EliminarAsync(
-                PROYECTO,
-                "variablesporindicador",
-                "id",
-                variable["id"].ToString()
-            );
-
-            if (resultado)
-            {
-                mensajeModalVariables = "Variable eliminada correctamente.";
-                await ObtenerVariablesPorIndicador(indicadorSeleccionado["id"].ToString());
-            }
-            else
-            {
-                mensajeModalVariables = "Error al eliminar la variable.";
-            }
-        }
-        catch (Exception ex)
-        {
-            mensajeModalVariables = $"Error al eliminar: {ex.Message}";
-        }
-    }
-
 //metodos para la representación visual
 private async Task AbrirModalRepresenVisualPorIndicador(Dictionary<string, object> indicador)
 {
@@ -1273,12 +957,6 @@ private void CerrarModalRepresenVisualPorIndicador()
     mostrarModalRepresenVisualPorIndicador = false;
     indicadorSeleccionado = null;
     relacionesRepresenVisual.Clear();
-}
-private string ObtenerNombreVariable(object variableId)
-{
-    return variables
-        .FirstOrDefault(v => v["id"].ToString() == variableId.ToString())?["nombre"]?.ToString() 
-        ?? "N/A";
 }
 
 //metodos para fuentes por indicador
