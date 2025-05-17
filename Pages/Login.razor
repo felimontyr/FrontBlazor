@@ -4,6 +4,7 @@
 @inject NavigationManager Navigation 
 @inject IJSRuntime JSRuntime 
 @inherits FrontBlazor.Services.ValidacionAcceso
+@using System.Text.Json
 
 
 <!-- Sección de diseño de la página de login -->
@@ -74,168 +75,147 @@
     /// <summary>
     /// Manejar el proceso de login cuando el formulario se envía de manera válida.
     /// </summary>
-    private async Task ManejarLogin()
+ private async Task ManejarLogin()
+{
+    try
     {
-        try
+        var datosVerificar = new Dictionary<string, string>
         {
-            // Construir el diccionario con los datos necesarios para verificar usuario y contraseña
-            var datosVerificar = new Dictionary<string, string>
+            { "campoUsuario", "email" },
+            { "campoContrasena", "contrasena" },
+            { "valorUsuario", modeloLogin.Correo },
+            { "valorContrasena", modeloLogin.Contrasena }
+        };
+
+        var respuestaVerificar = await Http.PostAsJsonAsync(
+            "http://localhost:5266/api/proyecto/usuario/verificar-contrasena",
+            datosVerificar
+        );
+
+        if (respuestaVerificar.IsSuccessStatusCode)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", "Login exitoso.");
+
+            var jsonConsultaRoles = new
             {
-                { "campoUsuario", "email" },                          // Indicar el nombre del campo de usuario en la base de datos
-                { "campoContrasena", "contrasena" },                  // Indicar el nombre del campo de contraseña en la base de datos
-                { "valorUsuario", modeloLogin.Correo },               // Capturar el valor del usuario ingresado en el formulario
-                { "valorContrasena", modeloLogin.Contrasena }         // Capturar el valor de la contraseña ingresada
+                consulta = @"SELECT u.email AS EmailUsuario, r.nombre AS NombreRol 
+                            FROM usuario u 
+                            INNER JOIN rol_usuario ru ON u.email = ru.fkemail 
+                            INNER JOIN rol r ON ru.fkidrol = r.id 
+                            WHERE u.email = @EmailUsuario",
+                parametros = new { EmailUsuario = modeloLogin.Correo }
             };
 
-            // Realizar una solicitud POST al backend para verificar si el usuario y la contraseña son correctos
-            var respuestaVerificar = await Http.PostAsJsonAsync(
-                "http://localhost:5266/api/proyecto/usuario/verificar-contrasena", // URL del endpoint de verificación
-                datosVerificar                                                    // Cuerpo de la solicitud
+            var respuestaRoles = await Http.PostAsJsonAsync(
+                "http://localhost:5266/api/proyecto/tabla/ejecutar-consulta-parametrizada",
+                jsonConsultaRoles
             );
 
-            // Evaluar si la verificación fue exitosa (HTTP 200 OK)
-            if (respuestaVerificar.IsSuccessStatusCode)
+            if (respuestaRoles.IsSuccessStatusCode)
             {
-                // Mostrar un mensaje de login exitoso
-                await JSRuntime.InvokeVoidAsync("alert", "Login exitoso.");
+                var listaRoles = await respuestaRoles.Content.ReadFromJsonAsync<List<Dictionary<string, object>>>();
 
-                // Preparar el objeto JSON para consultar los roles asociados al usuario
-                var jsonConsultaRoles = new
+                if (listaRoles != null && listaRoles.Any())
                 {
-                    consulta = @"SELECT u.email AS EmailUsuario, r.nombre AS NombreRol 
-                                 FROM usuario u 
-                                 INNER JOIN rol_usuario ru ON u.email = ru.fkemail 
-                                 INNER JOIN rol r ON ru.fkidrol = r.id 
-                                 WHERE u.email = @EmailUsuario",      // Consulta SQL para obtener los roles
-                    parametros = new { EmailUsuario = modeloLogin.Correo } // Parametrizar con el email ingresado
-                };
+                    await JSRuntime.InvokeVoidAsync("sessionStorage.setItem", "usuarioEmail", modeloLogin.Correo);
 
-                // Realizar una solicitud POST para consultar los roles del usuario
-                var respuestaRoles = await Http.PostAsJsonAsync(
-                    "http://localhost:5266/api/proyecto/tabla/ejecutar-consulta-parametrizada", // URL del endpoint de consultas
-                    jsonConsultaRoles                                                         // Cuerpo de la solicitud
-                );
-
-                // Evaluar si la obtención de roles fue exitosa
-                if (respuestaRoles.IsSuccessStatusCode)
-                {
-                    // Leer la respuesta como una lista de diccionarios
-                    var listaRoles = await respuestaRoles.Content.ReadFromJsonAsync<List<Dictionary<string, object>>>();
-
-                    // Validar que existan roles asociados
-                    if (listaRoles != null && listaRoles.Any())
+                    foreach (var rol in listaRoles)
                     {
-                        // Almacenar en sessionStorage el correo electrónico del usuario
-                        await JSRuntime.InvokeVoidAsync("sessionStorage.setItem", "usuarioEmail", modeloLogin.Correo);
-
-                        // Recorrer cada uno de los roles obtenidos
-                        foreach (var rol in listaRoles)
+                        if (rol.TryGetValue("NombreRol", out object? nombreRolObj) && nombreRolObj is not null)
                         {
-                            // Intentar obtener el nombre del rol
-                            if (rol.TryGetValue("NombreRol", out object? nombreRolObj) && nombreRolObj is not null)
+                            var nombreRol = nombreRolObj.ToString();
+                            if (!string.IsNullOrEmpty(nombreRol))
                             {
-                                var nombreRol = nombreRolObj.ToString(); // Convertir a cadena
+                                await JSRuntime.InvokeVoidAsync("sessionStorage.setItem", $"rol_{nombreRol}", nombreRol);
 
-                                // Validar que el nombre del rol no sea nulo ni vacío
-                                if (!string.IsNullOrEmpty(nombreRol))
+                                // Definir permisos según el rol
+                                var permisos = nombreRol.ToLower() switch
                                 {
-                                    // Guardar el nombre del rol en sessionStorage
-                                    await JSRuntime.InvokeVoidAsync("sessionStorage.setItem", $"rol_{nombreRol}", nombreRol);
+                                    "admin" => new { crear = true, editar = true, leer = true, eliminar = true },
+                                    "verificador" => new { crear = false, editar = true, leer = true, eliminar = false },
+                                    "validador" => new { crear = true, editar = true, leer = true, eliminar = false },
+                                    "invitado" => new { crear = false, editar = false, leer = true, eliminar = false },
+                                    _ => new { crear = false, editar = false, leer = true, eliminar = false }
+                                };
 
-                                    // Construir el objeto JSON para consultar las rutas asociadas a este rol
-                                    var jsonConsultaRutas = new
+                                // Guardar permisos en sessionStorage
+                                await JSRuntime.InvokeVoidAsync(
+                                    "sessionStorage.setItem",
+                                    $"permisos_{nombreRol}",
+                                    JsonSerializer.Serialize(permisos)
+                                );
+
+                                // Consultar rutas del rol
+                                var jsonConsultaRutas = new
+                                {
+                                    consulta = "SELECT Ruta FROM RutaRol WHERE Rol = @Rol",
+                                    parametros = new { Rol = nombreRol }
+                                };
+
+                                var respuestaRutas = await Http.PostAsJsonAsync(
+                                    "http://localhost:5266/api/proyecto/tabla/ejecutar-consulta-parametrizada",
+                                    jsonConsultaRutas
+                                );
+
+                                if (respuestaRutas.IsSuccessStatusCode)
+                                {
+                                    var listaRutas = await respuestaRutas.Content
+                                        .ReadFromJsonAsync<List<Dictionary<string, object>>>();
+
+                                    if (listaRutas != null)
                                     {
-                                        consulta = "SELECT Ruta FROM RutaRol WHERE Rol = @Rol", // Consulta SQL para las rutas
-                                        parametros = new { Rol = nombreRol }                    // Parametrizar con el nombre del rol
-                                    };
-
-                                    // Realizar una solicitud POST para consultar las rutas del rol
-                                    var respuestaRutas = await Http.PostAsJsonAsync(
-                                        "http://localhost:5266/api/proyecto/tabla/ejecutar-consulta-parametrizada", 
-                                        jsonConsultaRutas
-                                    );
-
-                                    // Evaluar si la respuesta de rutas fue exitosa
-                                    if (respuestaRutas.IsSuccessStatusCode)
-                                    {
-                                        // Leer la lista de rutas asociadas al rol
-                                        var listaRutas = await respuestaRutas.Content.ReadFromJsonAsync<List<Dictionary<string, object>>>();
-
-                                        // Validar que existan rutas
-                                        if (listaRutas != null)
+                                        foreach (var ruta in listaRutas)
                                         {
-                                            // Recorrer cada ruta obtenida
-                                            foreach (var ruta in listaRutas)
+                                            if (ruta.TryGetValue("Ruta", out object? nombreRutaObj) && 
+                                                nombreRutaObj is not null)
                                             {
-                                                // Intentar obtener el nombre de la ruta
-                                                if (ruta.TryGetValue("Ruta", out object? nombreRutaObj) && nombreRutaObj is not null)
+                                                var nombreRuta = nombreRutaObj.ToString();
+                                                if (!string.IsNullOrEmpty(nombreRuta))
                                                 {
-                                                    var nombreRuta = nombreRutaObj.ToString(); // Convertir a cadena
-
-                                                    // Validar que el nombre de la ruta no sea nulo ni vacío
-                                                    if (!string.IsNullOrEmpty(nombreRuta))
-                                                    {
-                                                        // Guardar la ruta en sessionStorage
-                                                        await JSRuntime.InvokeVoidAsync(
-                                                            "sessionStorage.setItem",
-                                                            $"ruta_{nombreRuta}",
-                                                            nombreRuta
-                                                        );
-                                                    }
+                                                    await JSRuntime.InvokeVoidAsync(
+                                                        "sessionStorage.setItem",
+                                                        $"ruta_{nombreRuta}",
+                                                        nombreRuta
+                                                    );
                                                 }
                                             }
                                         }
                                     }
-                                    // Si la solicitud de rutas no es exitosa, no se realiza ninguna acción adicional
                                 }
                             }
                         }
-
-                        // Mostrar mensaje indicando que los roles fueron obtenidos exitosamente
-                        await JSRuntime.InvokeVoidAsync("alert", "Roles obtenidos exitosamente.");
-
-                        // Redirigir al usuario a la página principal
-                        Navigation.NavigateTo("/");
                     }
-                    else
-                    {
-                        // Mostrar mensaje de advertencia si no se encuentran roles para el usuario
-                        await JSRuntime.InvokeVoidAsync("alert", "No se encontraron roles para el usuario.");
-                    }
+
+                    await JSRuntime.InvokeVoidAsync("alert", "Roles y permisos obtenidos exitosamente.");
+                    Navigation.NavigateTo("/");
                 }
                 else
                 {
-                    // Obtener el contenido de error de la respuesta
-                    var errorContenido = await respuestaRoles.Content.ReadAsStringAsync();
-
-                    // Mostrar el error en la consola para depuración
-                    Console.WriteLine($"Error al obtener roles: {errorContenido}");
-
-                    // Mostrar alerta de error al usuario
-                    await JSRuntime.InvokeVoidAsync("alert", "Error al obtener los roles del usuario.");
+                    await JSRuntime.InvokeVoidAsync("alert", "No se encontraron roles para el usuario.");
                 }
-            }
-            // Evaluar si la respuesta indica credenciales incorrectas (HTTP 401 Unauthorized)
-            else if (respuestaVerificar.StatusCode == System.Net.HttpStatusCode.Unauthorized)
-            {
-                // Mostrar alerta de usuario o contraseña incorrectos
-                await JSRuntime.InvokeVoidAsync("alert", "Usuario o contraseña incorrectos.");
             }
             else
             {
-                // Mostrar alerta genérica de error en login
-                await JSRuntime.InvokeVoidAsync("alert", "Error al iniciar sesión. Por favor, intente de nuevo.");
+                var errorContenido = await respuestaRoles.Content.ReadAsStringAsync();
+                Console.WriteLine($"Error al obtener roles: {errorContenido}");
+                await JSRuntime.InvokeVoidAsync("alert", "Error al obtener los roles del usuario.");
             }
         }
-        catch (Exception ex)
+        else if (respuestaVerificar.StatusCode == System.Net.HttpStatusCode.Unauthorized)
         {
-            // Capturar cualquier excepción inesperada en el proceso de login
-            Console.WriteLine($"Error en el proceso de login: {ex.Message}");
-
-            // Mostrar alerta indicando que ocurrió un error inesperado
-            await JSRuntime.InvokeVoidAsync("alert", $"Error inesperado: {ex.Message}");
+            await JSRuntime.InvokeVoidAsync("alert", "Usuario o contraseña incorrectos.");
+        }
+        else
+        {
+            await JSRuntime.InvokeVoidAsync("alert", "Error al iniciar sesión. Por favor, intente de nuevo.");
         }
     }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error en el proceso de login: {ex.Message}");
+        await JSRuntime.InvokeVoidAsync("alert", $"Error inesperado: {ex.Message}");
+    }
+}
 
     /// <summary>
     /// Función auxiliar para comparar claves de rutas en sessionStorage.

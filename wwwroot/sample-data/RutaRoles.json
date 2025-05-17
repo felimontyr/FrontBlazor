@@ -1,0 +1,54 @@
+{
+    "admin": {
+      "usuarios": [
+        {
+          "email": "admin@empresa.com",
+          "rutas": [
+            "/usuario",
+            "/rutarol",
+            "/dashboard",
+            "/configuracion"
+          ]
+        }
+      ]
+    },
+    "usuario": {
+      "usuarios": [
+        {
+          "email": "carlosarturo.castrocalero@gmail.com",
+          "rutas": [
+            "/dashboard",
+            "/perfil"
+          ]
+        },
+        {
+          "email": "hugo@empresa.com",
+          "rutas": [
+            "/dashboard",
+            "/perfil"
+          ]
+        },
+        {
+          "email": "paraburrar@empresa.com",
+          "rutas": [
+            "/dashboard",
+            "/perfil"
+          ]
+        },
+        {
+          "email": "paraborra2@empresa.com",
+          "rutas": [
+            "/dashboard",
+            "/perfil"
+          ]
+        },
+        {
+          "email": "paraborra3@empresa.com",
+          "rutas": [
+            "/dashboard",
+            "/perfil"
+          ]
+        }
+      ]
+    }
+  }

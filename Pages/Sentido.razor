@@ -6,14 +6,18 @@
 @inject NavigationManager navegacionManager
 @inject IJSRuntime JSRuntime
 @inherits ValidacionAcceso
-
+@using FrontBlazor.Components
 
 <h3>Sentidos</h3>
 
-<div>
-    <input @bind="nuevoSentidoNombre" placeholder="Nombre del sentido" />
-    <button class="btn-success" @onclick="CrearSentido">Crear</button>
-</div>
+<VerificarPermiso Accion="crear" Ruta="/Sentido">
+    <div class="mb-3">
+        <input @bind="nuevoSentidoNombre" placeholder="Nombre del sentido" class="form-control" />
+        <button class="btn btn-success mt-2" @onclick="CrearSentido">
+            <i class="fas fa-plus"></i> Crear
+        </button>
+    </div>
+</VerificarPermiso>
 
 @if (errorMensaje != null)
 {
@@ -22,7 +26,12 @@
 
 @if (cargando)
 {
-    <div>Cargando sentidos...</div>
+    <div class="text-center my-4">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Cargando...</span>
+        </div>
+        <p>Cargando sentidos...</p>
+    </div>
 }
 else
 {
@@ -32,11 +41,17 @@ else
             <li class="list-group-item d-flex justify-content-between align-items-center">
                 @if (sentidoEditarId == sentido["id"].ToString())
                 {
-                    <div class="d-flex gap-2">
-                        <input @bind="sentidoEditarNombre" class="form-control" />
-                        <button class="btn btn-sm btn-success" @onclick="() => GuardarEdicion(sentido)">Guardar</button>
-                        <button class="btn btn-sm btn-secondary" @onclick="CancelarEdicion">Cancelar</button>
-                    </div>
+                    <VerificarPermiso Accion="editar" Ruta="/Sentido">
+                        <div class="d-flex gap-2">
+                            <input @bind="sentidoEditarNombre" class="form-control" />
+                            <button class="btn btn-sm btn-success" @onclick="() => GuardarEdicion(sentido)">
+                                <i class="fas fa-save"></i> Guardar
+                            </button>
+                            <button class="btn btn-sm btn-secondary" @onclick="CancelarEdicion">
+                                <i class="fas fa-times"></i> Cancelar
+                            </button>
+                        </div>
+                    </VerificarPermiso>
                 }
                 else
                 {
@@ -44,8 +59,16 @@ else
                         <span class="fw-bold">#@sentido["id"]</span> - @sentido["nombre"]
                     </div>
                     <div>
-                        <button class="btn btn-sm btn-primary" @onclick="() => IniciarEdicion(sentido)">Editar</button>
-                        <button class="btn btn-sm btn-danger" @onclick="() => EliminarSentido(sentido)">Eliminar</button>
+                        <VerificarPermiso Accion="editar" Ruta="/Sentido">
+                            <button class="btn btn-sm btn-primary me-1" @onclick="() => IniciarEdicion(sentido)">
+                                <i class="fas fa-edit"></i> Editar
+                            </button>
+                        </VerificarPermiso>
+                        <VerificarPermiso Accion="eliminar" Ruta="/Sentido">
+                            <button class="btn btn-sm btn-danger" @onclick="() => EliminarSentido(sentido)">
+                                <i class="fas fa-trash"></i> Eliminar
+                            </button>
+                        </VerificarPermiso>
                     </div>
                 }
             </li>

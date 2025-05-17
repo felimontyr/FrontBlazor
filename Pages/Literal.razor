@@ -6,34 +6,36 @@
 @inject NavigationManager navegacionManager
 @inject IJSRuntime JSRuntime
 @inherits ValidacionAcceso
-
+@using FrontBlazor.Components
 
 <h3>Literales</h3>
 
-<div class="mb-3">
-    <div class="row g-3">
-        <div class="col-md-2">
-            <input @bind="nuevoLiteralId" class="form-control" placeholder="ID" />
-        </div>
-        <div class="col-md-6">
-            <input @bind="nuevoLiteralDescripcion" class="form-control" placeholder="Descripción" />
-        </div>
-        <div class="col-md-3">
-            <select @bind="nuevoLiteralArticulo" class="form-select">
-                <option value="">Seleccione artículo</option>
-                @foreach (var articulo in articulos)
-                {
-                    <option value="@articulo["id"]">@articulo["nombre"]</option>
-                }
-            </select>
-        </div>
-        <div class="col-md-1">
-            <button class="btn btn-success w-100" @onclick="CrearLiteral">
-                <i class="fas fa-plus"></i> Crear
-            </button>
+<VerificarPermiso Accion="crear" Ruta="/literal">
+    <div class="mb-3">
+        <div class="row g-3">
+            <div class="col-md-2">
+                <input @bind="nuevoLiteralId" class="form-control" placeholder="ID" />
+            </div>
+            <div class="col-md-6">
+                <input @bind="nuevoLiteralDescripcion" class="form-control" placeholder="Descripción" />
+            </div>
+            <div class="col-md-3">
+                <select @bind="nuevoLiteralArticulo" class="form-select">
+                    <option value="">Seleccione artículo</option>
+                    @foreach (var articulo in articulos)
+                    {
+                        <option value="@articulo["id"]">@articulo["nombre"]</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-1">
+                <button class="btn btn-success w-100" @onclick="CrearLiteral">
+                    <i class="fas fa-plus"></i> Crear
+                </button>
+            </div>
         </div>
     </div>
-</div>
+</VerificarPermiso>
 
 @if (errorMensaje != null)
 {
@@ -67,31 +69,33 @@ else
                     <tr>
                         @if (literalEditarId == literal["id"].ToString())
                         {
-                            <td>
-                                <input @bind="literalEditarId" class="form-control form-control-sm" disabled />
-                            </td>
-                            <td>
-                                <input @bind="literalEditarDescripcion" class="form-control form-control-sm" />
-                            </td>
-                            <td>
-                                <select @bind="literalEditarArticulo" class="form-select form-select-sm">
-                                    <option value="">Seleccione artículo</option>
-                                    @foreach (var articulo in articulos)
-                                    {
-                                        <option value="@articulo["id"]" selected="@(literalEditarArticulo == articulo["id"].ToString())">
-                                            @articulo["nombre"]
-                                        </option>
-                                    }
-                                </select>
-                            </td>
-                            <td>
-                                <button class="btn btn-sm btn-success me-1" @onclick="() => GuardarEdicion(literal)">
-                                    <i class="fas fa-save"></i> Guardar
-                                </button>
-                                <button class="btn btn-sm btn-secondary" @onclick="CancelarEdicion">
-                                    <i class="fas fa-times"></i> Cancelar
-                                </button>
-                            </td>
+                            <VerificarPermiso Accion="editar" Ruta="/literal">
+                                <td>
+                                    <input @bind="literalEditarId" class="form-control form-control-sm" disabled />
+                                </td>
+                                <td>
+                                    <input @bind="literalEditarDescripcion" class="form-control form-control-sm" />
+                                </td>
+                                <td>
+                                    <select @bind="literalEditarArticulo" class="form-select form-select-sm">
+                                        <option value="">Seleccione artículo</option>
+                                        @foreach (var articulo in articulos)
+                                        {
+                                            <option value="@articulo["id"]" selected="@(literalEditarArticulo == articulo["id"].ToString())">
+                                                @articulo["nombre"]
+                                            </option>
+                                        }
+                                    </select>
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-success me-1" @onclick="() => GuardarEdicion(literal)">
+                                        <i class="fas fa-save"></i> Guardar
+                                    </button>
+                                    <button class="btn btn-sm btn-secondary" @onclick="CancelarEdicion">
+                                        <i class="fas fa-times"></i> Cancelar
+                                    </button>
+                                </td>
+                            </VerificarPermiso>
                         }
                         else
                         {
@@ -99,12 +103,16 @@ else
                             <td>@ObtenerDescripcionLiteral(literal)</td>
                             <td>@ObtenerNombreArticulo(literal)</td>
                             <td>
-                                <button class="btn btn-sm btn-primary me-1" @onclick="() => IniciarEdicion(literal)">
-                                    <i class="fas fa-edit"></i> Editar
-                                </button>
-                                <button class="btn btn-sm btn-danger" @onclick="() => EliminarLiteral(literal)">
-                                    <i class="fas fa-trash-alt"></i> Eliminar
-                                </button>
+                                <VerificarPermiso Accion="editar" Ruta="/literal">
+                                    <button class="btn btn-sm btn-primary me-1" @onclick="() => IniciarEdicion(literal)">
+                                        <i class="fas fa-edit"></i> Editar
+                                    </button>
+                                </VerificarPermiso>
+                                <VerificarPermiso Accion="eliminar" Ruta="/literal">
+                                    <button class="btn btn-sm btn-danger" @onclick="() => EliminarLiteral(literal)">
+                                        <i class="fas fa-trash-alt"></i> Eliminar
+                                    </button>
+                                </VerificarPermiso>
                             </td>
                         }
                     </tr>

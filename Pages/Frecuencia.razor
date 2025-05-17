@@ -6,14 +6,16 @@
 @inject NavigationManager navegacionManager
 @inject IJSRuntime JSRuntime
 @inherits ValidacionAcceso
-
+@using FrontBlazor.Components
 
 <h3>Frecuencias</h3>
 
-<div>
-    <input @bind="nuevaFrecuenciaNombre" placeholder="Nombre de la frecuencia" />
-    <button class="btn-success" @onclick="CrearFrecuencia">Crear</button>
-</div>
+<VerificarPermiso Accion="crear" Ruta="/Frecuencia">
+    <div>
+        <input @bind="nuevaFrecuenciaNombre" placeholder="Nombre de la frecuencia" />
+        <button class="btn-success" @onclick="CrearFrecuencia">Crear</button>
+    </div>
+</VerificarPermiso>
 
 @if (errorMensaje != null)
 {
@@ -32,11 +34,13 @@ else
             <li class="list-group-item d-flex justify-content-between align-items-center">
                 @if (frecuenciaEditarId == frecuencia["id"].ToString())
                 {
-                    <div class="d-flex gap-2">
-                        <input @bind="frecuenciaEditarNombre" class="form-control" />
-                        <button class="btn btn-sm btn-success" @onclick="() => GuardarEdicion(frecuencia)">Guardar</button>
-                        <button class="btn btn-sm btn-secondary" @onclick="CancelarEdicion">Cancelar</button>
-                    </div>
+                    <VerificarPermiso Accion="editar" Ruta="/Frecuencia">
+                        <div class="d-flex gap-2">
+                            <input @bind="frecuenciaEditarNombre" class="form-control" />
+                            <button class="btn btn-sm btn-success" @onclick="() => GuardarEdicion(frecuencia)">Guardar</button>
+                            <button class="btn btn-sm btn-secondary" @onclick="CancelarEdicion">Cancelar</button>
+                        </div>
+                    </VerificarPermiso>
                 }
                 else
                 {
@@ -44,8 +48,12 @@ else
                         <span class="fw-bold">#@frecuencia["id"]</span> - @frecuencia["nombre"]
                     </div>
                     <div>
-                        <button class="btn btn-sm btn-primary" @onclick="() => IniciarEdicion(frecuencia)">Editar</button>
-                        <button class="btn btn-sm btn-danger" @onclick="() => EliminarFrecuencia(frecuencia)">Eliminar</button>
+                        <VerificarPermiso Accion="editar" Ruta="/Frecuencia">
+                            <button class="btn btn-sm btn-primary" @onclick="() => IniciarEdicion(frecuencia)">Editar</button>
+                        </VerificarPermiso>
+                        <VerificarPermiso Accion="eliminar" Ruta="/Frecuencia">
+                            <button class="btn btn-sm btn-danger" @onclick="() => EliminarFrecuencia(frecuencia)">Eliminar</button>
+                        </VerificarPermiso>
                     </div>
                 }
             </li>

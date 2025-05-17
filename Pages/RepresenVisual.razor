@@ -6,14 +6,24 @@
 @inject NavigationManager navegacionManager
 @inject IJSRuntime JSRuntime
 @inherits ValidacionAcceso
-
+@using FrontBlazor.Components
 
 <h3>Representaciones Visuales</h3>
 
-<div>
-    <input @bind="nuevaRepresenVisualNombre" placeholder="Nombre de la representación visual" />
-    <button class="btn-success" @onclick="CrearRepresenVisual">Crear</button>
-</div>
+<VerificarPermiso Accion="crear" Ruta="/RepresenVisual">
+    <div class="mb-3">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <input @bind="nuevaRepresenVisualNombre" class="form-control" placeholder="Nombre de la representación visual" />
+            </div>
+            <div class="col-md-2">
+                <button class="btn btn-success w-100" @onclick="CrearRepresenVisual">
+                    <i class="fas fa-plus"></i> Crear
+                </button>
+            </div>
+        </div>
+    </div>
+</VerificarPermiso>
 
 @if (errorMensaje != null)
 {
@@ -22,7 +32,12 @@
 
 @if (cargando)
 {
-    <div>Cargando representaciones visuales...</div>
+    <div class="text-center my-4">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Cargando...</span>
+        </div>
+        <p>Cargando representaciones visuales...</p>
+    </div>
 }
 else
 {
@@ -32,11 +47,17 @@ else
             <li class="list-group-item d-flex justify-content-between align-items-center">
                 @if (represenVisualEditarId == represenVisual["id"].ToString())
                 {
-                    <div class="d-flex gap-2">
-                        <input @bind="represenVisualEditarNombre" class="form-control" />
-                        <button class="btn btn-sm btn-success" @onclick="() => GuardarEdicion(represenVisual)">Guardar</button>
-                        <button class="btn btn-sm btn-secondary" @onclick="CancelarEdicion">Cancelar</button>
-                    </div>
+                    <VerificarPermiso Accion="editar" Ruta="/RepresenVisual">
+                        <div class="d-flex gap-2">
+                            <input @bind="represenVisualEditarNombre" class="form-control" />
+                            <button class="btn btn-sm btn-success" @onclick="() => GuardarEdicion(represenVisual)">
+                                <i class="fas fa-save"></i> Guardar
+                            </button>
+                            <button class="btn btn-sm btn-secondary" @onclick="CancelarEdicion">
+                                <i class="fas fa-times"></i> Cancelar
+                            </button>
+                        </div>
+                    </VerificarPermiso>
                 }
                 else
                 {
@@ -44,8 +65,16 @@ else
                         <span class="fw-bold">#@represenVisual["id"]</span> - @represenVisual["nombre"]
                     </div>
                     <div>
-                        <button class="btn btn-sm btn-primary" @onclick="() => IniciarEdicion(represenVisual)">Editar</button>
-                        <button class="btn btn-sm btn-danger" @onclick="() => EliminarRepresenVisual(represenVisual)">Eliminar</button>
+                        <VerificarPermiso Accion="editar" Ruta="/RepresenVisual">
+                            <button class="btn btn-sm btn-primary me-1" @onclick="() => IniciarEdicion(represenVisual)">
+                                <i class="fas fa-edit"></i> Editar
+                            </button>
+                        </VerificarPermiso>
+                        <VerificarPermiso Accion="eliminar" Ruta="/RepresenVisual">
+                            <button class="btn btn-sm btn-danger" @onclick="() => EliminarRepresenVisual(represenVisual)">
+                                <i class="fas fa-trash"></i> Eliminar
+                            </button>
+                        </VerificarPermiso>
                     </div>
                 }
             </li>

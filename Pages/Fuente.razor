@@ -6,14 +6,16 @@
 @inject NavigationManager navegacionManager
 @inject IJSRuntime JSRuntime
 @inherits ValidacionAcceso
-
+@using FrontBlazor.Components
 
 <h3>Fuentes</h3>
 
-<div>
-    <input @bind="nuevaFuenteNombre" placeholder="Nombre de la fuente" />
-    <button class="btn-success" @onclick="CrearFuente">Crear</button>
-</div>
+<VerificarPermiso Accion="crear" Ruta="/Fuente">
+    <div>
+        <input @bind="nuevaFuenteNombre" placeholder="Nombre de la fuente" />
+        <button class="btn-success" @onclick="CrearFuente">Crear</button>
+    </div>
+</VerificarPermiso>
 
 @if (errorMensaje != null)
 {
@@ -32,11 +34,13 @@ else
             <li class="list-group-item d-flex justify-content-between align-items-center">
                 @if (fuenteEditarId == fuente["id"].ToString())
                 {
-                    <div class="d-flex gap-2">
-                        <input @bind="fuenteEditarNombre" class="form-control" />
-                        <button class="btn btn-sm btn-success" @onclick="() => GuardarEdicion(fuente)">Guardar</button>
-                        <button class="btn btn-sm btn-secondary" @onclick="CancelarEdicion">Cancelar</button>
-                    </div>
+                    <VerificarPermiso Accion="editar" Ruta="/Fuente">
+                        <div class="d-flex gap-2">
+                            <input @bind="fuenteEditarNombre" class="form-control" />
+                            <button class="btn btn-sm btn-success" @onclick="() => GuardarEdicion(fuente)">Guardar</button>
+                            <button class="btn btn-sm btn-secondary" @onclick="CancelarEdicion">Cancelar</button>
+                        </div>
+                    </VerificarPermiso>
                 }
                 else
                 {
@@ -44,8 +48,12 @@ else
                         <span class="fw-bold">#@fuente["id"]</span> - @fuente["nombre"]
                     </div>
                     <div>
-                        <button class="btn btn-sm btn-primary" @onclick="() => IniciarEdicion(fuente)">Editar</button>
-                        <button class="btn btn-sm btn-danger" @onclick="() => EliminarFuente(fuente)">Eliminar</button>
+                        <VerificarPermiso Accion="editar" Ruta="/Fuente">
+                            <button class="btn btn-sm btn-primary" @onclick="() => IniciarEdicion(fuente)">Editar</button>
+                        </VerificarPermiso>
+                        <VerificarPermiso Accion="eliminar" Ruta="/Fuente">
+                            <button class="btn btn-sm btn-danger" @onclick="() => EliminarFuente(fuente)">Eliminar</button>
+                        </VerificarPermiso>
                     </div>
                 }
             </li>

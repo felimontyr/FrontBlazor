@@ -6,39 +6,79 @@
 @inject NavigationManager navegacionManager
 @inject IJSRuntime JSRuntime
 @inherits ValidacionAcceso
-
+@using FrontBlazor.Components
 
 <h3>Unidades de Medición</h3>
 
-<div>
-    <input @bind="nuevaUnidadMedicionDescripcion" placeholder="Descripción de la unidad de medición" />
-    <button class="btn-success" @onclick="CrearUnidadMedicion">Crear</button>
-</div>
+<VerificarPermiso Accion="crear" Ruta="/unidadmedicion">
+    <div class="mb-3">
+        <div class="input-group">
+            <input @bind="nuevaUnidadMedicionDescripcion" 
+                   placeholder="Descripción de la unidad de medición" 
+                   class="form-control" />
+            <button class="btn btn-success" @onclick="CrearUnidadMedicion">
+                <i class="fas fa-plus"></i> Crear
+            </button>
+        </div>
+    </div>
+</VerificarPermiso>
 
 @if (!string.IsNullOrEmpty(errorMensaje))
 {
-    <div style="color: red;">@errorMensaje</div>
+    <div class="alert alert-danger">@errorMensaje</div>
 }
 
-<ul>
-    @foreach (var unidadMedicion in unidadesMedicion)
-    {
-        <li>
-            @if (unidadMedicionEditarId == unidadMedicion["id"].ToString())
-            {
-                <input @bind="unidadMedicionEditarDescripcion" />
-                <button class="btn-primary" @onclick="() => GuardarEdicion(unidadMedicion)">Guardar</button>
-                <button @onclick="CancelarEdicion">Cancelar</button>
-            }
-            else
-            {
-                @unidadMedicion["descripcion"]
-                <button class="btn-primary" @onclick="() => IniciarEdicion(unidadMedicion)">Editar</button>
-                <button class="btn btn-danger" @onclick="() => EliminarUnidadMedicion(unidadMedicion)">Eliminar</button>
-            }
-        </li>
-    }
-</ul>
+@if (cargando)
+{
+    <div class="text-center my-4">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Cargando...</span>
+        </div>
+        <p>Cargando unidades de medición...</p>
+    </div>
+}
+else
+{
+    <ul class="list-group">
+        @foreach (var unidadMedicion in unidadesMedicion)
+        {
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                @if (unidadMedicionEditarId == unidadMedicion["id"].ToString())
+                {
+                    <VerificarPermiso Accion="editar" Ruta="/unidadmedicion">
+                        <div class="d-flex gap-2 w-100">
+                            <input @bind="unidadMedicionEditarDescripcion" class="form-control" />
+                            <button class="btn btn-sm btn-success" @onclick="() => GuardarEdicion(unidadMedicion)">
+                                <i class="fas fa-save"></i> Guardar
+                            </button>
+                            <button class="btn btn-sm btn-secondary" @onclick="CancelarEdicion">
+                                <i class="fas fa-times"></i> Cancelar
+                            </button>
+                        </div>
+                    </VerificarPermiso>
+                }
+                else
+                {
+                    <span>
+                        <span class="fw-bold">#@unidadMedicion["id"]</span> - @unidadMedicion["descripcion"]
+                    </span>
+                    <div class="btn-group">
+                        <VerificarPermiso Accion="editar" Ruta="/unidadmedicion">
+                            <button class="btn btn-sm btn-primary" @onclick="() => IniciarEdicion(unidadMedicion)">
+                                <i class="fas fa-edit"></i> Editar
+                            </button>
+                        </VerificarPermiso>
+                        <VerificarPermiso Accion="eliminar" Ruta="/unidadmedicion">
+                            <button class="btn btn-sm btn-danger" @onclick="() => EliminarUnidadMedicion(unidadMedicion)">
+                                <i class="fas fa-trash"></i> Eliminar
+                            </button>
+                        </VerificarPermiso>
+                    </div>
+                }
+            </li>
+        }
+    </ul>
+}
 
 @code {
     private const string PROYECTO = "proyecto";

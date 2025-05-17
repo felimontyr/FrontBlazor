@@ -6,22 +6,24 @@
 @inject NavigationManager navegacionManager
 @inject IJSRuntime JSRuntime
 @inherits ValidacionAcceso
-
+@using FrontBlazor.Components
 
 <h3>Actores</h3>
 
-<div>
-    <input @bind="nuevoActorId" placeholder="ID del actor" />
-    <input @bind="nuevoActorNombre" placeholder="Nombre del actor" />
-    <select @bind="nuevoActorTipo">
-        <option value="">Seleccione un tipo</option>
-        @foreach (var tipo in tiposActor)
-        {
-            <option value="@tipo["id"]">@tipo["nombre"]</option>
-        }
-    </select>
-    <button class="btn-success" @onclick="CrearActor">Crear</button>
-</div>
+<VerificarPermiso Accion="crear" Ruta="/Actor">
+    <div>
+        <input @bind="nuevoActorId" placeholder="ID del actor" />
+        <input @bind="nuevoActorNombre" placeholder="Nombre del actor" />
+        <select @bind="nuevoActorTipo">
+            <option value="">Seleccione un tipo</option>
+            @foreach (var tipo in tiposActor)
+            {
+                <option value="@tipo["id"]">@tipo["nombre"]</option>
+            }
+        </select>
+        <button class="btn-success" @onclick="CrearActor">Crear</button>
+    </div>
+</VerificarPermiso>
 
 @if (errorMensaje != null)
 {
@@ -40,28 +42,35 @@ else
             <li class="list-group-item d-flex justify-content-between align-items-center">
                 @if (actorEditarId == actor["id"].ToString())
                 {
-                    <div class="d-flex gap-2">
-                        <input @bind="actorEditarId" class="form-control" disabled />
-                        <input @bind="actorEditarNombre" class="form-control" />
-                        <select @bind="actorEditarTipo" class="form-control">
-                            <option value="">Seleccione un tipo</option>
-                            @foreach (var tipo in tiposActor)
-                            {
-                                <option value="@tipo["id"]" selected="@(actorEditarTipo == tipo["id"].ToString())">@tipo["nombre"]</option>
-                            }
-                        </select>
-                        <button class="btn btn-sm btn-success" @onclick="() => GuardarEdicion(actor)">Guardar</button>
-                        <button class="btn btn-sm btn-secondary" @onclick="CancelarEdicion">Cancelar</button>
-                    </div>
+                    <VerificarPermiso Accion="editar" Ruta="/Actor">
+                        <div class="d-flex gap-2">
+                            <input @bind="actorEditarId" class="form-control" disabled />
+                            <input @bind="actorEditarNombre" class="form-control" />
+                            <select @bind="actorEditarTipo" class="form-control">
+                                <option value="">Seleccione un tipo</option>
+                                @foreach (var tipo in tiposActor)
+                                {
+                                    <option value="@tipo["id"]" selected="@(actorEditarTipo == tipo["id"].ToString())">@tipo["nombre"]</option>
+                                }
+                            </select>
+                            <button class="btn btn-sm btn-success" @onclick="() => GuardarEdicion(actor)">Guardar</button>
+                            <button class="btn btn-sm btn-secondary" @onclick="CancelarEdicion">Cancelar</button>
+                        </div>
+                    </VerificarPermiso>
                 }
                 else
                 {
                     <div>
-                        <span class="fw-bold">#@actor["id"]</span> - @actor["nombre"] (Tipo: @tiposActor.FirstOrDefault(t => t["id"].ToString() == actor["fkidtipoactor"].ToString())?["nombre"])
+                        <span class="fw-bold">#@actor["id"]</span> - @actor["nombre"] 
+                        (Tipo: @tiposActor.FirstOrDefault(t => t["id"].ToString() == actor["fkidtipoactor"].ToString())?["nombre"])
                     </div>
                     <div>
-                        <button class="btn btn-sm btn-primary" @onclick="() => IniciarEdicion(actor)">Editar</button>
-                        <button class="btn btn-sm btn-danger" @onclick="() => EliminarActor(actor)">Eliminar</button>
+                        <VerificarPermiso Accion="editar" Ruta="/Actor">
+                            <button class="btn btn-sm btn-primary" @onclick="() => IniciarEdicion(actor)">Editar</button>
+                        </VerificarPermiso>
+                        <VerificarPermiso Accion="eliminar" Ruta="/Actor">
+                            <button class="btn btn-sm btn-danger" @onclick="() => EliminarActor(actor)">Eliminar</button>
+                        </VerificarPermiso>
                     </div>
                 }
             </li>

@@ -6,7 +6,7 @@
 @inject NavigationManager navegacionManager
 @inject IJSRuntime JSRuntime
 @inherits ValidacionAcceso
-
+@using FrontBlazor.Components
 
 <h3>Representación Visual con Indicador</h3>
 
@@ -15,27 +15,31 @@
     <div class="alert alert-info">@mensaje</div>
 }
 
-<div class="mb-3">
-    <label>Indicador:</label>
-    <select class="form-select mb-2" @bind="nuevoIdIndicador">
-        <option value="">Seleccione un indicador</option>
-        @foreach (var indicador in indicadores)
-        {
-            <option value="@indicador["id"]">@indicador["nombre"]</option>
-        }
-    </select>
+<VerificarPermiso Accion="crear" Ruta="/represenvisualporindicador">
+    <div class="mb-3">
+        <label>Indicador:</label>
+        <select class="form-select mb-2" @bind="nuevoIdIndicador">
+            <option value="">Seleccione un indicador</option>
+            @foreach (var indicador in indicadores)
+            {
+                <option value="@indicador["id"]">@indicador["nombre"]</option>
+            }
+        </select>
 
-    <label>Representación Visual:</label>
-    <select class="form-select mb-2" @bind="nuevoIdRepresenvisual">
-        <option value="">Seleccione una representación visual</option>
-        @foreach (var rep in represenvisuales)
-        {
-            <option value="@rep["id"]">@rep["nombre"]</option>
-        }
-    </select>
+        <label>Representación Visual:</label>
+        <select class="form-select mb-2" @bind="nuevoIdRepresenvisual">
+            <option value="">Seleccione una representación visual</option>
+            @foreach (var rep in represenvisuales)
+            {
+                <option value="@rep["id"]">@rep["nombre"]</option>
+            }
+        </select>
 
-    <button class="btn btn-success" @onclick="AsignarRelacion">Crear Relación</button>
-</div>
+        <button class="btn btn-success" @onclick="AsignarRelacion">
+            <i class="fas fa-plus"></i> Crear Relación
+        </button>
+    </div>
+</VerificarPermiso>
 
 <h4 class="mt-4">Relaciones existentes</h4>
 
@@ -50,9 +54,14 @@ else
         {
             <li class="list-group-item d-flex justify-content-between align-items-center">
                 <span>
-                    Indicador: @indicadores.FirstOrDefault(i => i["id"].ToString() == relacion["fkidindicador"].ToString())?["nombre"] - Representación Visual: @represenvisuales.FirstOrDefault(r => r["id"].ToString() == relacion["fkidrepresenvisual"].ToString())?["nombre"]
+                    Indicador: @indicadores.FirstOrDefault(i => i["id"].ToString() == relacion["fkidindicador"].ToString())?["nombre"] 
+                    - Representación Visual: @represenvisuales.FirstOrDefault(r => r["id"].ToString() == relacion["fkidrepresenvisual"].ToString())?["nombre"]
                 </span>
-                <button class="btn btn-danger btn-sm" @onclick="() => EliminarRelacion(relacion)">Eliminar</button>
+                <VerificarPermiso Accion="eliminar" Ruta="/represenvisualporindicador">
+                    <button class="btn btn-danger btn-sm" @onclick="() => EliminarRelacion(relacion)">
+                        <i class="fas fa-trash"></i> Eliminar
+                    </button>
+                </VerificarPermiso>
             </li>
         }
     </ul>

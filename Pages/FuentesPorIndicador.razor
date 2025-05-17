@@ -6,7 +6,7 @@
 @inject NavigationManager navegacionManager
 @inject IJSRuntime JSRuntime
 @inherits ValidacionAcceso
-
+@using FrontBlazor.Components
 
 <h3>Fuentes por Indicador</h3>
 
@@ -15,27 +15,29 @@
     <div class="alert alert-info">@mensaje</div>
 }
 
-<div class="mb-3">
-    <label>Fuente:</label>
-    <select class="form-select mb-2" @bind="nuevoIdFuente">
-        <option value="">Seleccione una fuente</option>
-        @foreach (var fuente in fuentes)
-        {
-            <option value="@fuente["id"]">@fuente["nombre"]</option>
-        }
-    </select>
+<VerificarPermiso Accion="crear" Ruta="/fuentesporindicador">
+    <div class="mb-3">
+        <label>Fuente:</label>
+        <select class="form-select mb-2" @bind="nuevoIdFuente">
+            <option value="">Seleccione una fuente</option>
+            @foreach (var fuente in fuentes)
+            {
+                <option value="@fuente["id"]">@fuente["nombre"]</option>
+            }
+        </select>
 
-    <label>Indicador:</label>
-    <select class="form-select mb-2" @bind="nuevoIdIndicador">
-        <option value="">Seleccione un indicador</option>
-        @foreach (var indicador in indicadores)
-        {
-            <option value="@indicador["id"]">@indicador["nombre"]</option>
-        }
-    </select>
+        <label>Indicador:</label>
+        <select class="form-select mb-2" @bind="nuevoIdIndicador">
+            <option value="">Seleccione un indicador</option>
+            @foreach (var indicador in indicadores)
+            {
+                <option value="@indicador["id"]">@indicador["nombre"]</option>
+            }
+        </select>
 
-    <button class="btn btn-success" @onclick="CrearRelacion">Asignar Fuente</button>
-</div>
+        <button class="btn btn-success" @onclick="CrearRelacion">Asignar Fuente</button>
+    </div>
+</VerificarPermiso>
 
 <h4>Relaciones actuales</h4>
 @if (relaciones.Count == 0)
@@ -52,7 +54,9 @@ else
                     Fuente: @fuentes.FirstOrDefault(f => f["id"].ToString() == relacion["fkidfuente"].ToString())?["nombre"]
                     - Indicador: @indicadores.FirstOrDefault(i => i["id"].ToString() == relacion["fkidindicador"].ToString())?["nombre"]
                 </span>
-                <button class="btn btn-danger btn-sm" @onclick="() => EliminarRelacion(relacion)">Eliminar</button>
+                <VerificarPermiso Accion="eliminar" Ruta="/fuentesporindicador">
+                    <button class="btn btn-danger btn-sm" @onclick="() => EliminarRelacion(relacion)">Eliminar</button>
+                </VerificarPermiso>
             </li>
         }
     </ul>

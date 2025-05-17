@@ -6,6 +6,7 @@
 @inject NavigationManager navegacionManager
 @inject IJSRuntime JSRuntime
 @inherits ValidacionAcceso
+@using FrontBlazor.Components
 
 <h3>Gestión de Indicadores</h3>
 
@@ -19,90 +20,92 @@ else if (!string.IsNullOrEmpty(errorMensaje))
 }
 else
 {
-    <div class="mb-3 row g-2">
-        <div class="col"><input @bind="nuevoCodigo" class="form-control" placeholder="Código" /></div>
-        <div class="col"><input @bind="nuevoNombre" class="form-control" placeholder="Nombre" /></div>
-        <div class="col"><input @bind="nuevoMeta" class="form-control" placeholder="Meta" /></div>
-        <div class="col"><textarea @bind="nuevoObjetivo" class="form-control" placeholder="Objetivo"></textarea></div>
-        <div class="col"><textarea @bind="nuevoAlcance" class="form-control" placeholder="Alcance"></textarea></div>
-        <div class="col"><textarea @bind="nuevoFormula" class="form-control" placeholder="Fórmula"></textarea></div>
+    <VerificarPermiso Accion="crear" Ruta="/indicador">
+        <div class="mb-3 row g-2">
+            <div class="col"><input @bind="nuevoCodigo" class="form-control" placeholder="Código" /></div>
+            <div class="col"><input @bind="nuevoNombre" class="form-control" placeholder="Nombre" /></div>
+            <div class="col"><input @bind="nuevoMeta" class="form-control" placeholder="Meta" /></div>
+            <div class="col"><textarea @bind="nuevoObjetivo" class="form-control" placeholder="Objetivo"></textarea></div>
+            <div class="col"><textarea @bind="nuevoAlcance" class="form-control" placeholder="Alcance"></textarea></div>
+            <div class="col"><textarea @bind="nuevoFormula" class="form-control" placeholder="Fórmula"></textarea></div>
 
-        <div class="col">
-            <select @bind="nuevoTipoIndicador" class="form-select">
-                <option value="">Tipo</option>
-                @foreach (var tipo in tiposIndicador)
-                {
-                    <option value="@tipo["id"]">@tipo["nombre"]</option>
-                }
-            </select>
+            <div class="col">
+                <select @bind="nuevoTipoIndicador" class="form-select">
+                    <option value="">Tipo</option>
+                    @foreach (var tipo in tiposIndicador)
+                    {
+                        <option value="@tipo["id"]">@tipo["nombre"]</option>
+                    }
+                </select>
+            </div>
+            <div class="col">
+                <select @bind="nuevaUnidadMedicion" class="form-select">
+                    <option value="">Unidad</option>
+                    @foreach (var unidad in unidadesMedicion)
+                    {
+                        <option value="@unidad["id"]">@unidad["descripcion"]</option>
+                    }
+                </select>
+            </div>
+            <div class="col">
+                <select @bind="nuevoSentido" class="form-select">
+                    <option value="">Sentido</option>
+                    @foreach (var sentido in sentidos)
+                    {
+                        <option value="@sentido["id"]">@sentido["nombre"]</option>
+                    }
+                </select>
+            </div>
+            <div class="col">
+                <select @bind="nuevaFrecuencia" class="form-select">
+                    <option value="">Frecuencia</option>
+                    @foreach (var frecuencia in frecuencias)
+                    {
+                        <option value="@frecuencia["id"]">@frecuencia["nombre"]</option>
+                    }
+                </select>
+            </div>
+            <div class="col">
+                <select @bind="nuevoArticulo" class="form-select">
+                    <option value="">Artículo</option>
+                    @foreach (var articulo in articulos)
+                    {
+                        <option value="@articulo["id"]">@articulo["nombre"]</option>
+                    }
+                </select>
+            </div>
+            <div class="col">
+                <select @bind="nuevoLiteral" class="form-select">
+                    <option value="">Literal</option>
+                    @foreach (var literal in literales)
+                    {
+                        <option value="@literal["id"]">@literal["descripcion"]</option>
+                    }
+                </select>
+            </div>
+            <div class="col">
+                <select @bind="nuevoNumeral" class="form-select">
+                    <option value="">Numeral</option>
+                    @foreach (var numeral in numerales)
+                    {
+                        <option value="@numeral["id"]">@numeral["descripcion"]</option>
+                    }
+                </select>
+            </div>
+            <div class="col">
+                <select @bind="nuevoParagrafo" class="form-select">
+                    <option value="">Parágrafo</option>
+                    @foreach (var paragrafo in parrafos)
+                    {
+                        <option value="@paragrafo["id"]">@paragrafo["descripcion"]</option>
+                    }
+                </select>
+            </div>
+            <div class="col">
+                <button class="btn btn-success w-100" @onclick="CrearIndicador">Crear</button>
+            </div>
         </div>
-        <div class="col">
-            <select @bind="nuevaUnidadMedicion" class="form-select">
-                <option value="">Unidad</option>
-                @foreach (var unidad in unidadesMedicion)
-                {
-                    <option value="@unidad["id"]">@unidad["descripcion"]</option>
-                }
-            </select>
-        </div>
-        <div class="col">
-            <select @bind="nuevoSentido" class="form-select">
-                <option value="">Sentido</option>
-                @foreach (var sentido in sentidos)
-                {
-                    <option value="@sentido["id"]">@sentido["nombre"]</option>
-                }
-            </select>
-        </div>
-        <div class="col">
-            <select @bind="nuevaFrecuencia" class="form-select">
-                <option value="">Frecuencia</option>
-                @foreach (var frecuencia in frecuencias)
-                {
-                    <option value="@frecuencia["id"]">@frecuencia["nombre"]</option>
-                }
-            </select>
-        </div>
-        <div class="col">
-            <select @bind="nuevoArticulo" class="form-select">
-                <option value="">Artículo</option>
-                @foreach (var articulo in articulos)
-                {
-                    <option value="@articulo["id"]">@articulo["nombre"]</option>
-                }
-            </select>
-        </div>
-        <div class="col">
-            <select @bind="nuevoLiteral" class="form-select">
-                <option value="">Literal</option>
-                @foreach (var literal in literales)
-                {
-                    <option value="@literal["id"]">@literal["descripcion"]</option>
-                }
-            </select>
-        </div>
-        <div class="col">
-            <select @bind="nuevoNumeral" class="form-select">
-                <option value="">Numeral</option>
-                @foreach (var numeral in numerales)
-                {
-                    <option value="@numeral["id"]">@numeral["descripcion"]</option>
-                }
-            </select>
-        </div>
-        <div class="col">
-            <select @bind="nuevoParagrafo" class="form-select">
-                <option value="">Parágrafo</option>
-                @foreach (var paragrafo in parrafos)
-                {
-                    <option value="@paragrafo["id"]">@paragrafo["descripcion"]</option>
-                }
-            </select>
-        </div>
-        <div class="col">
-            <button class="btn btn-success w-100" @onclick="CrearIndicador">Crear</button>
-        </div>
-    </div>
+    </VerificarPermiso>
 
     @if (indicadores.Count == 0)
     {
@@ -237,11 +240,29 @@ else
                         <td>@BuscarDescripcion(parrafos, indicador["fkidparagrafo"])</td>
                         <td>
                             <div class="btn-group">
-                                <button class="btn btn-sm btn-primary" @onclick="() => IniciarEdicion(indicador)">Editar</button>
-                                <button class="btn btn-sm btn-danger" @onclick="() => EliminarIndicador(indicador)">Eliminar</button>
-                                <button class="btn btn-sm btn-info" @onclick="() => AbrirModalResponsables(indicador)">Asignar Responsables</button>
-                                <button class="btn btn-sm btn-secondary" @onclick="() => AbrirModalRepresenVisualPorIndicador(indicador)">Asignar Rep. Visuales</button>
-                                <button class="btn btn-sm btn-info" @onclick="() => AbrirModalFuentesPorIndicador(indicador)">Asignar Fuentes</button>
+                                <VerificarPermiso Accion="editar" Ruta="/indicador">
+                                    <button class="btn btn-sm btn-primary" @onclick="() => IniciarEdicion(indicador)">
+                                        Editar
+                                    </button>
+                                </VerificarPermiso>
+                                
+                                <VerificarPermiso Accion="eliminar" Ruta="/indicador">
+                                    <button class="btn btn-sm btn-danger" @onclick="() => EliminarIndicador(indicador)">
+                                        Eliminar
+                                    </button>
+                                </VerificarPermiso>
+
+                                <VerificarPermiso Accion="editar" Ruta="/indicador">
+                                    <button class="btn btn-sm btn-info" @onclick="() => AbrirModalResponsables(indicador)">
+                                        Asignar Responsables
+                                    </button>
+                                    <button class="btn btn-sm btn-secondary" @onclick="() => AbrirModalRepresenVisualPorIndicador(indicador)">
+                                        Asignar Rep. Visuales
+                                    </button>
+                                    <button class="btn btn-sm btn-info" @onclick="() => AbrirModalFuentesPorIndicador(indicador)">
+                                        Asignar Fuentes
+                                    </button>
+                                </VerificarPermiso>
                             </div>
                         </td>
                     }
@@ -255,177 +276,183 @@ else
 <!-- Modal para gestionar responsables por indicador -->
 @if (mostrarModalResponsables)
 {
-    <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5);" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Responsables para Indicador: @(indicadorSeleccionado != null ? indicadorSeleccionado["nombre"] : "")</h5>
-                    <button type="button" class="btn-close" @onclick="CerrarModalResponsables"></button>
-                </div>
-                <div class="modal-body">
-                    @if (!string.IsNullOrEmpty(mensajeModal))
-                    {
-                        <div class="alert alert-info">@mensajeModal</div>
-                    }
-
-                    <div class="mb-3">
-                        <label>Responsable (Actor):</label>
-                        <select class="form-select mb-2" @bind="nuevoResponsable">
-                            <option value="">Seleccione un actor</option>
-                            @foreach (var actor in actores)
-                            {
-                                <option value="@actor["id"]">@actor["nombre"]</option>
-                            }
-                        </select>
-
-                        <label>Fecha Asignación:</label>
-                        <input type="date" class="form-control mb-3" @bind="nuevaFechaAsignacion" />
-
-                        <button class="btn btn-success" @onclick="CrearRelacion">Asignar</button>
+    <VerificarPermiso Accion="editar" Ruta="/indicador">
+        <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5);" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Responsables para Indicador: @(indicadorSeleccionado != null ? indicadorSeleccionado["nombre"] : "")</h5>
+                        <button type="button" class="btn-close" @onclick="CerrarModalResponsables"></button>
                     </div>
+                    <div class="modal-body">
+                        @if (!string.IsNullOrEmpty(mensajeModal))
+                        {
+                            <div class="alert alert-info">@mensajeModal</div>
+                        }
 
-                    <h4>Relaciones actuales</h4>
-                    @if (relaciones.Count == 0)
-                    {
-                        <p>No hay responsables asignados a este indicador.</p>
-                    }
-                    else
-                    {
-                        <ul class="list-group">
-                            @foreach (var relacion in relaciones)
-                            {
-                                <li class="list-group-item d-flex justify-content-between align-items-center">
-                                    <span>
-                                        Actor: @actores.FirstOrDefault(a => a["id"].ToString() == relacion["fkidresponsable"].ToString())?["nombre"]
-                                        - Fecha: @FormatFecha(relacion["fechaasignacion"])
-                                    </span>
-                                    <span>
-                                        <button class="btn btn-danger btn-sm" @onclick="() => EliminarRelacion(relacion)">Eliminar</button>
-                                    </span>
-                                </li>
+                        <div class="mb-3">
+                            <label>Responsable (Actor):</label>
+                            <select class="form-select mb-2" @bind="nuevoResponsable">
+                                <option value="">Seleccione un actor</option>
+                                @foreach (var actor in actores)
+                                {
+                                    <option value="@actor["id"]">@actor["nombre"]</option>
                             }
-                        </ul>
-                    }
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="CerrarModalResponsables">Cerrar</button>
+                            </select>
+
+                            <label>Fecha Asignación:</label>
+                            <input type="date" class="form-control mb-3" @bind="nuevaFechaAsignacion" />
+
+                            <button class="btn btn-success" @onclick="CrearRelacion">Asignar</button>
+                        </div>
+
+                        <h4>Relaciones actuales</h4>
+                        @if (relaciones.Count == 0)
+                        {
+                            <p>No hay responsables asignados a este indicador.</p>
+                        }
+                        else
+                        {
+                            <ul class="list-group">
+                                @foreach (var relacion in relaciones)
+                                {
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        <span>
+                                            Actor: @actores.FirstOrDefault(a => a["id"].ToString() == relacion["fkidresponsable"].ToString())?["nombre"]
+                                            - Fecha: @FormatFecha(relacion["fechaasignacion"])
+                                        </span>
+                                        <span>
+                                            <button class="btn btn-danger btn-sm" @onclick="() => EliminarRelacion(relacion)">Eliminar</button>
+                                        </span>
+                                    </li>
+                                }
+                            </ul>
+                        }
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="CerrarModalResponsables">Cerrar</button>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
+    </VerificarPermiso>
 }
 
 <!-- Modal para gestionar representaciones visuales por indicador -->
 @if (mostrarModalRepresenVisualPorIndicador)
 {
-    <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5);" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Representaciones Visuales para Indicador: @(indicadorSeleccionado != null ? indicadorSeleccionado["nombre"] : "")</h5>
-                    <button type="button" class="btn-close" @onclick="CerrarModalRepresenVisualPorIndicador"></button>
-                </div>
-                <div class="modal-body">
-                    @if (!string.IsNullOrEmpty(mensajeModalRepresenVisualPorIndicador))
-                    {
-                        <div class="alert alert-info">@mensajeModalRepresenVisualPorIndicador</div>
-                    }
-
-                    <div class="mb-3">
-                        <label>Representación Visual:</label>
-                        <select class="form-select mb-2" @bind="nuevoIdRepresenVisualPorIndicador">
-                            <option value="">Seleccione una representación visual</option>
-                            @foreach (var rep in represenvisuales)
-                            {
-                                <option value="@rep["id"]">@rep["nombre"]</option>
-                            }
-                        </select>
-
-                        <button class="btn btn-success" @onclick="AsignarRepresenVisualPorIndicador">Asignar</button>
+    <VerificarPermiso Accion="editar" Ruta="/indicador">
+        <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5);" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Representaciones Visuales para Indicador: @(indicadorSeleccionado != null ? indicadorSeleccionado["nombre"] : "")</h5>
+                        <button type="button" class="btn-close" @onclick="CerrarModalRepresenVisualPorIndicador"></button>
                     </div>
+                    <div class="modal-body">
+                        @if (!string.IsNullOrEmpty(mensajeModalRepresenVisualPorIndicador))
+                        {
+                            <div class="alert alert-info">@mensajeModalRepresenVisualPorIndicador</div>
+                        }
 
-                    <h4 class="mt-4">Relaciones existentes</h4>
-                    @if (relacionesRepresenVisual.Count == 0)
-                    {
-                        <p>No hay relaciones registradas para este indicador.</p>
-                    }
-                    else
-                    {
-                        <ul class="list-group">
-                            @foreach (var relacion in relacionesRepresenVisual)
-                            {
-                                <li class="list-group-item d-flex justify-content-between align-items-center">
-                                    <span>
-                                        @represenvisuales.FirstOrDefault(r => r["id"].ToString() == relacion["fkidrepresenvisual"].ToString())?["nombre"]
-                                    </span>
-                                    <button class="btn btn-danger btn-sm" @onclick="() => EliminarRepresenVisualPorIndicador(relacion)">Eliminar</button>
-                                </li>
+                        <div class="mb-3">
+                            <label>Representación Visual:</label>
+                            <select class="form-select mb-2" @bind="nuevoIdRepresenVisualPorIndicador">
+                                <option value="">Seleccione una representación visual</option>
+                                @foreach (var rep in represenvisuales)
+                                {
+                                    <option value="@rep["id"]">@rep["nombre"]</option>
                             }
-                        </ul>
-                    }
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="CerrarModalRepresenVisualPorIndicador">Cerrar</button>
+                            </select>
+
+                            <button class="btn btn-success" @onclick="AsignarRepresenVisualPorIndicador">Asignar</button>
+                        </div>
+
+                        <h4 class="mt-4">Relaciones existentes</h4>
+                        @if (relacionesRepresenVisual.Count == 0)
+                        {
+                            <p>No hay relaciones registradas para este indicador.</p>
+                        }
+                        else
+                        {
+                            <ul class="list-group">
+                                @foreach (var relacion in relacionesRepresenVisual)
+                                {
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        <span>
+                                            @represenvisuales.FirstOrDefault(r => r["id"].ToString() == relacion["fkidrepresenvisual"].ToString())?["nombre"]
+                                        </span>
+                                        <button class="btn btn-danger btn-sm" @onclick="() => EliminarRepresenVisualPorIndicador(relacion)">Eliminar</button>
+                                    </li>
+                                }
+                            </ul>
+                        }
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="CerrarModalRepresenVisualPorIndicador">Cerrar</button>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
+    </VerificarPermiso>
 }
 <!-- Modal para gestionar fuentes por indicador -->
 @if (mostrarModalFuentesPorIndicador)
 {
-    <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5);" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Fuentes para Indicador: @(indicadorSeleccionado != null ? indicadorSeleccionado["nombre"] : "")</h5>
-                    <button type="button" class="btn-close" @onclick="CerrarModalFuentesPorIndicador"></button>
-                </div>
-                <div class="modal-body">
-                    @if (!string.IsNullOrEmpty(mensajeModalFuentesPorIndicador))
-                    {
-                        <div class="alert alert-info">@mensajeModalFuentesPorIndicador</div>
-                    }
-
-                    <div class="mb-3">
-                        <label>Fuente:</label>
-                        <select class="form-select mb-2" @bind="nuevoIdFuente">
-                            <option value="">Seleccione una fuente</option>
-                            @foreach (var fuente in fuentes)
-                            {
-                                <option value="@fuente["id"]">@fuente["nombre"]</option>
-                            }
-                        </select>
-
-                        <button class="btn btn-success" @onclick="AsignarFuentePorIndicador">Asignar</button>
+    <VerificarPermiso Accion="editar" Ruta="/indicador">
+        <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5);" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Fuentes para Indicador: @(indicadorSeleccionado != null ? indicadorSeleccionado["nombre"] : "")</h5>
+                        <button type="button" class="btn-close" @onclick="CerrarModalFuentesPorIndicador"></button>
                     </div>
+                    <div class="modal-body">
+                        @if (!string.IsNullOrEmpty(mensajeModalFuentesPorIndicador))
+                        {
+                            <div class="alert alert-info">@mensajeModalFuentesPorIndicador</div>
+                        }
 
-                    <h4 class="mt-4">Fuentes asignadas</h4>
-                    @if (relacionesFuentes.Count == 0)
-                    {
-                        <p>No hay fuentes asignadas a este indicador.</p>
-                    }
-                    else
-                    {
-                        <ul class="list-group">
-                            @foreach (var relacion in relacionesFuentes)
-                            {
-                                <li class="list-group-item d-flex justify-content-between align-items-center">
-                                    <span>
-                                        @fuentes.FirstOrDefault(f => f["id"].ToString() == relacion["fkidfuente"].ToString())?["nombre"]
-                                    </span>
-                                    <button class="btn btn-danger btn-sm" @onclick="() => EliminarFuentePorIndicador(relacion)">Eliminar</button>
-                                </li>
+                        <div class="mb-3">
+                            <label>Fuente:</label>
+                            <select class="form-select mb-2" @bind="nuevoIdFuente">
+                                <option value="">Seleccione una fuente</option>
+                                @foreach (var fuente in fuentes)
+                                {
+                                    <option value="@fuente["id"]">@fuente["nombre"]</option>
                             }
-                        </ul>
-                    }
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="CerrarModalFuentesPorIndicador">Cerrar</button>
+                            </select>
+
+                            <button class="btn btn-success" @onclick="AsignarFuentePorIndicador">Asignar</button>
+                        </div>
+
+                        <h4 class="mt-4">Fuentes asignadas</h4>
+                        @if (relacionesFuentes.Count == 0)
+                        {
+                            <p>No hay fuentes asignadas a este indicador.</p>
+                        }
+                        else
+                        {
+                            <ul class="list-group">
+                                @foreach (var relacion in relacionesFuentes)
+                                {
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        <span>
+                                            @fuentes.FirstOrDefault(f => f["id"].ToString() == relacion["fkidfuente"].ToString())?["nombre"]
+                                        </span>
+                                        <button class="btn btn-danger btn-sm" @onclick="() => EliminarFuentePorIndicador(relacion)">Eliminar</button>
+                                    </li>
+                                }
+                            </ul>
+                        }
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="CerrarModalFuentesPorIndicador">Cerrar</button>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
+    </VerificarPermiso>
 }
 
 @code {

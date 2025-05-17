@@ -6,60 +6,105 @@
 @inject NavigationManager navegacionManager
 @inject IJSRuntime JSRuntime
 @inherits ValidacionAcceso
-
+@using FrontBlazor.Components
 
 <h3>Variables</h3>
 
-<div>
-    <input @bind="nuevaVariableNombre" placeholder="Nombre de la variable" />
-    <input type="date" @bind="nuevaVariableFecha" @bind:format="yyyy-MM-dd" />
-    <select @bind="nuevaVariableUsuario">
-        <option value="">Seleccione un usuario</option>
-        @foreach (var usuario in usuarios)
-        {
-            <option value="@usuario["email"]">@usuario["email"]</option>
-        }
-    </select>
-    <button class="btn-success" @onclick="CrearVariable">Crear</button>
-</div>
+<VerificarPermiso Accion="crear" Ruta="/Variable">
+    <div class="mb-3">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <input @bind="nuevaVariableNombre" placeholder="Nombre de la variable" class="form-control" />
+            </div>
+            <div class="col-md-3">
+                <input type="date" @bind="nuevaVariableFecha" @bind:format="yyyy-MM-dd" class="form-control" />
+            </div>
+            <div class="col-md-3">
+                <select @bind="nuevaVariableUsuario" class="form-select">
+                    <option value="">Seleccione un usuario</option>
+                    @foreach (var usuario in usuarios)
+                    {
+                        <option value="@usuario["email"]">@usuario["email"]</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button class="btn btn-success w-100" @onclick="CrearVariable">
+                    <i class="fas fa-plus"></i> Crear
+                </button>
+            </div>
+        </div>
+    </div>
+</VerificarPermiso>
 
 @if (!string.IsNullOrEmpty(errorMensaje))
 {
-    <div style="color: red;">@errorMensaje</div>
+    <div class="alert alert-danger">@errorMensaje</div>
 }
 
-<ul>
-    @foreach (var variable in variables)
-    {
-        <li>
-            @if (variableEditarId == variable["id"].ToString())
-            {
-                <input @bind="variableEditarNombre" placeholder="Nuevo nombre" />
-                <input type="date" @bind="variableEditarFecha" @bind:format="yyyy-MM-dd" />
-                <select @bind="variableEditarUsuario">
-                    <option value="">Seleccione usuario</option>
-                    @foreach (var usuario in usuarios)
-                    {
-                        <option value="@usuario["email"]" selected="@(variableEditarUsuario == usuario["email"].ToString())">
-                            @usuario["email"]
-                        </option>
-                    }
-                </select>
-                <button class="btn-primary" @onclick="() => GuardarEdicion(variable)">Guardar</button>
-                <button @onclick="CancelarEdicion">Cancelar</button>
-            }
-            else
-            {
-                <span>
-                    @variable["nombre"] - Creado el: @FormatDate(variable["fechacreacion"]) -
-                    Usuario: @(variable.ContainsKey("fkemailusuario") ? variable["fkemailusuario"] : "N/A")
-                </span>
-                <button class="btn-primary" @onclick="() => IniciarEdicion(variable)">Editar</button>
-                <button class="btn btn-danger" @onclick="() => EliminarVariable(variable)">Eliminar</button>
-            }
-        </li>
-    }
-</ul>
+@if (cargando)
+{
+    <div class="text-center my-4">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Cargando...</span>
+        </div>
+        <p>Cargando variables...</p>
+    </div>
+}
+else
+{
+    <ul class="list-group">
+        @foreach (var variable in variables)
+        {
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                @if (variableEditarId == variable["id"].ToString())
+                {
+                    <VerificarPermiso Accion="editar" Ruta="/Variable">
+                        <div class="d-flex gap-2 w-100">
+                            <input @bind="variableEditarNombre" placeholder="Nuevo nombre" class="form-control" />
+                            <input type="date" @bind="variableEditarFecha" @bind:format="yyyy-MM-dd" class="form-control" />
+                            <select @bind="variableEditarUsuario" class="form-select">
+                                <option value="">Seleccione usuario</option>
+                                @foreach (var usuario in usuarios)
+                                {
+                                    <option value="@usuario["email"]" selected="@(variableEditarUsuario == usuario["email"].ToString())">
+                                        @usuario["email"]
+                                    </option>
+                                }
+                            </select>
+                            <button class="btn btn-success" @onclick="() => GuardarEdicion(variable)">
+                                <i class="fas fa-save"></i> Guardar
+                            </button>
+                            <button class="btn btn-secondary" @onclick="CancelarEdicion">
+                                <i class="fas fa-times"></i> Cancelar
+                            </button>
+                        </div>
+                    </VerificarPermiso>
+                }
+                else
+                {
+                    <div>
+                        <span class="fw-bold">@variable["nombre"]</span> - 
+                        Creado el: @FormatDate(variable["fechacreacion"]) -
+                        Usuario: @(variable.ContainsKey("fkemailusuario") ? variable["fkemailusuario"] : "N/A")
+                    </div>
+                    <div class="btn-group">
+                        <VerificarPermiso Accion="editar" Ruta="/Variable">
+                            <button class="btn btn-primary" @onclick="() => IniciarEdicion(variable)">
+                                <i class="fas fa-edit"></i> Editar
+                            </button>
+                        </VerificarPermiso>
+                        <VerificarPermiso Accion="eliminar" Ruta="/Variable">
+                            <button class="btn btn-danger" @onclick="() => EliminarVariable(variable)">
+                                <i class="fas fa-trash"></i> Eliminar
+                            </button>
+                        </VerificarPermiso>
+                    </div>
+                }
+            </li>
+        }
+    </ul>
+}
 
 @code {
     private const string PROYECTO = "proyecto";

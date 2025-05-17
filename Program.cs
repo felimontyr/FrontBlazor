@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Components.WebAssembly.Hosting;  // Proporciona la in
 using FrontBlazor;                              // El espacio de nombres raíz de nuestro proyecto
 using FrontBlazor.Services;                     // Contiene los servicios personalizados para comunicación con la API
 
+
 // Crea un constructor de host WebAssembly con configuración predeterminada
 // Este objeto se utiliza para configurar los servicios y componentes de la aplicación
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
@@ -35,3 +36,9 @@ builder.Services.AddScoped<ServicioEntidad>();
 // RunAsync() inicia la aplicación y espera hasta que se cierre
 // El uso de await asegura que la aplicación siga ejecutándose mientras el navegador esté abierto
 await builder.Build().RunAsync();
+
+// ...existing code...
+builder.Services.AddScoped(sp => new HttpClient { 
+    BaseAddress = new Uri(builder.HostEnvironment.BaseAddress)  // Esto apunta a la raíz de wwwroot
+}); 
+// ...existing code...

@@ -6,21 +6,26 @@
 @inject NavigationManager navegacionManager
 @inject IJSRuntime JSRuntime
 @inherits ValidacionAcceso
+@using FrontBlazor.Components
 
 <h3>Resultados por Indicador</h3>
 
-<div class="mb-3">
-    <input @bind="nuevoResultado" placeholder="Resultado" class="form-control mb-2" />
-    <input type="date" @bind="nuevaFecha" @bind:format="yyyy-MM-dd" class="form-control mb-2" />
-    <select class="form-select mb-2" @bind="nuevoIndicadorId">
-        <option value="">Seleccione un indicador</option>
-        @foreach (var indicador in indicadores)
-        {
-            <option value="@indicador["id"]">@indicador["nombre"]</option>
-        }
-    </select>
-    <button class="btn btn-success" @onclick="CrearResultado" disabled="@(!indicadores.Any())">Crear</button>
-</div>
+<VerificarPermiso Accion="crear" Ruta="/resultadoindicador">
+    <div class="mb-3">
+        <input @bind="nuevoResultado" placeholder="Resultado" class="form-control mb-2" />
+        <input type="date" @bind="nuevaFecha" @bind:format="yyyy-MM-dd" class="form-control mb-2" />
+        <select class="form-select mb-2" @bind="nuevoIndicadorId">
+            <option value="">Seleccione un indicador</option>
+            @foreach (var indicador in indicadores)
+            {
+                <option value="@indicador["id"]">@indicador["nombre"]</option>
+            }
+        </select>
+        <button class="btn btn-success" @onclick="CrearResultado" disabled="@(!indicadores.Any())">
+            <i class="fas fa-plus"></i> Crear
+        </button>
+    </div>
+</VerificarPermiso>
 
 @if (!string.IsNullOrEmpty(mensaje))
 {
@@ -33,21 +38,27 @@
         <li class="list-group-item d-flex justify-content-between align-items-center flex-column">
             @if (editarId == resultado["id"].ToString())
             {
-                <div class="w-100 d-flex flex-column gap-2">
-                    <input class="form-control" @bind="editarResultado" />
-                    <input type="date" class="form-control" @bind="editarFecha" />
-                    <select class="form-select" @bind="editarIndicadorId">
-                        <option value="">Seleccione un indicador</option>
-                        @foreach (var indicador in indicadores)
-                        {
-                            <option value="@indicador["id"]">@indicador["nombre"]</option>
-                        }
-                    </select>
-                    <div class="mt-2 d-flex gap-2">
-                        <button class="btn btn-success btn-sm" @onclick="() => GuardarEdicion(resultado)">Guardar</button>
-                        <button class="btn btn-secondary btn-sm" @onclick="CancelarEdicion">Cancelar</button>
+                <VerificarPermiso Accion="editar" Ruta="/resultadoindicador">
+                    <div class="w-100 d-flex flex-column gap-2">
+                        <input class="form-control" @bind="editarResultado" />
+                        <input type="date" class="form-control" @bind="editarFecha" />
+                        <select class="form-select" @bind="editarIndicadorId">
+                            <option value="">Seleccione un indicador</option>
+                            @foreach (var indicador in indicadores)
+                            {
+                                <option value="@indicador["id"]">@indicador["nombre"]</option>
+                            }
+                        </select>
+                        <div class="mt-2 d-flex gap-2">
+                            <button class="btn btn-success btn-sm" @onclick="() => GuardarEdicion(resultado)">
+                                <i class="fas fa-save"></i> Guardar
+                            </button>
+                            <button class="btn btn-secondary btn-sm" @onclick="CancelarEdicion">
+                                <i class="fas fa-times"></i> Cancelar
+                            </button>
+                        </div>
                     </div>
-                </div>
+                </VerificarPermiso>
             }
             else
             {
@@ -57,8 +68,16 @@
                     <span><strong>Indicador:</strong> @indicadores.FirstOrDefault(i => i["id"].ToString() == resultado["fkidindicador"].ToString())?["nombre"]</span>
                 </div>
                 <div class="mt-2 d-flex gap-2">
-                    <button class="btn btn-primary btn-sm" @onclick="() => IniciarEdicion(resultado)">Editar</button>
-                    <button class="btn btn-danger btn-sm" @onclick="() => EliminarResultado(resultado)">Eliminar</button>
+                    <VerificarPermiso Accion="editar" Ruta="/resultadoindicador">
+                        <button class="btn btn-primary btn-sm" @onclick="() => IniciarEdicion(resultado)">
+                            <i class="fas fa-edit"></i> Editar
+                        </button>
+                    </VerificarPermiso>
+                    <VerificarPermiso Accion="eliminar" Ruta="/resultadoindicador">
+                        <button class="btn btn-danger btn-sm" @onclick="() => EliminarResultado(resultado)">
+                            <i class="fas fa-trash"></i> Eliminar
+                        </button>
+                    </VerificarPermiso>
                 </div>
             }
         </li>

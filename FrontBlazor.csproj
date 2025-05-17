@@ -33,5 +33,11 @@
     <!-- PrivateAssets="all" significa que este paquete solo se usa durante el desarrollo y no se incluye en la aplicación final -->
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="8.0.6" PrivateAssets="all" />
   </ItemGroup>
+  
+  <ItemGroup>
+    <Content Update="wwwroot\sample-data\rutasRoles.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
 
 </Project>

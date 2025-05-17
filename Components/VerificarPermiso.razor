@@ -1,0 +1,81 @@
+@inject IJSRuntime JSRuntime
+@using System.Text.Json
+
+@if (TienePermiso)
+{
+    @ChildContent
+}
+
+@code {
+    [Parameter] public RenderFragment ChildContent { get; set; }
+    [Parameter] public string Accion { get; set; }
+    [Parameter] public string Ruta { get; set; }
+
+    private bool TienePermiso { get; set; } = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        TienePermiso = await VerificarPermisoRol();
+        await base.OnInitializedAsync();
+    }
+
+    private async Task<bool> VerificarPermisoRol()
+    {
+        try
+        {
+            var roles = await ObtenerRolesUsuario();
+            foreach (var rol in roles)
+            {
+                var permisosJson = await JSRuntime.InvokeAsync<string>(
+                    "sessionStorage.getItem",
+                    $"permisos_{rol}"
+                );
+
+                if (!string.IsNullOrEmpty(permisosJson))
+                {
+                    var permisos = JsonSerializer.Deserialize<PermisosModel>(permisosJson);
+                    if (permisos != null)
+                    {
+                        return Accion.ToLower() switch
+                        {
+                            "crear" => permisos.crear,
+                            "editar" => permisos.editar,
+                            "eliminar" => permisos.eliminar,
+                            "leer" => permisos.leer,
+                            _ => false
+                        };
+                    }
+                }
+            }
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+        return false;
+    }
+
+    private async Task<List<string>> ObtenerRolesUsuario()
+    {
+        var roles = new List<string>();
+        try
+        {
+            var keys = await JSRuntime.InvokeAsync<string[]>("eval", "Object.keys(sessionStorage)");
+            roles.AddRange(keys.Where(k => k.StartsWith("rol_"))
+                             .Select(k => k.Substring(4)));
+        }
+        catch (Exception)
+        {
+            // Si hay error, retornar lista vacía
+        }
+        return roles;
+    }
+
+    private class PermisosModel
+    {
+        public bool crear { get; set; }
+        public bool editar { get; set; }
+        public bool leer { get; set; }
+        public bool eliminar { get; set; }
+    }
+}

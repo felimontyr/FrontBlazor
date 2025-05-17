@@ -6,29 +6,51 @@
 @inject NavigationManager navegacionManager
 @inject IJSRuntime JSRuntime
 @inherits ValidacionAcceso
+@using FrontBlazor.Components
 
 <h3>Artículos</h3>
 
-<div>
-    <input @bind="nuevoArticuloId" placeholder="ID del artículo" />
-    <input @bind="nuevoArticuloNombre" placeholder="Nombre del artículo" />
-    <textarea @bind="nuevoArticuloDescripcion" placeholder="Descripción del artículo" class="form-control"></textarea>
-    <select @bind="nuevoArticuloSeccion">
-        <option value="">Seleccione una sección</option>
-        @foreach (var seccion in secciones)
-        {
-            <option value="@seccion["id"]">@seccion["nombre"]</option>
-        }
-    </select>
-    <select @bind="nuevoArticuloSubseccion">
-        <option value="">Seleccione una subsección</option>
-        @foreach (var subseccion in subsecciones)
-        {
-            <option value="@subseccion["id"]">@subseccion["nombre"]</option>
-        }
-    </select>
-    <button class="btn-success" @onclick="CrearArticulo">Crear</button>
-</div>
+<VerificarPermiso Accion="crear" Ruta="/Articulo">
+    <div class="card mb-3">
+        <div class="card-body">
+            <h5 class="card-title">Crear Nuevo Artículo</h5>
+            <div class="row g-3">
+                <div class="col-md-2">
+                    <input @bind="nuevoArticuloId" class="form-control" placeholder="ID del artículo" />
+                </div>
+                <div class="col-md-4">
+                    <input @bind="nuevoArticuloNombre" class="form-control" placeholder="Nombre del artículo" />
+                </div>
+                <div class="col-md-6">
+                    <textarea @bind="nuevoArticuloDescripcion" class="form-control" placeholder="Descripción del artículo"></textarea>
+                </div>
+                <div class="col-md-6">
+                    <select @bind="nuevoArticuloSeccion" class="form-select">
+                        <option value="">Seleccione una sección</option>
+                        @foreach (var seccion in secciones)
+                        {
+                            <option value="@seccion["id"]">@seccion["nombre"]</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <select @bind="nuevoArticuloSubseccion" class="form-select">
+                        <option value="">Seleccione una subsección</option>
+                        @foreach (var subseccion in subsecciones)
+                        {
+                            <option value="@subseccion["id"]">@subseccion["nombre"]</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-12">
+                    <button class="btn btn-success" @onclick="CrearArticulo">
+                        <i class="fas fa-plus"></i> Crear Artículo
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</VerificarPermiso>
 
 @if (errorMensaje != null)
 {
@@ -37,54 +59,91 @@
 
 @if (cargando)
 {
-    <div>Cargando artículos...</div>
+    <div class="alert alert-info">Cargando artículos...</div>
 }
 else
 {
-    <ul class="list-group mt-3">
+    <div class="list-group mt-3">
         @foreach (var articulo in articulos)
         {
-            <li class="list-group-item d-flex justify-content-between align-items-center">
+            <div class="list-group-item">
                 @if (articuloEditarId == articulo["id"].ToString())
                 {
-                    <div class="d-flex gap-2">
-                        <input @bind="articuloEditarId" class="form-control" disabled />
-                        <input @bind="articuloEditarNombre" class="form-control" />
-                        <textarea @bind="articuloEditarDescripcion" class="form-control"></textarea>
-                        <select @bind="articuloEditarSeccion" class="form-control">
-                            <option value="">Seleccione una sección</option>
-                            @foreach (var seccion in secciones)
-                            {
-                                <option value="@seccion["id"]" selected="@(articuloEditarSeccion == seccion["id"].ToString())">@seccion["nombre"]</option>
-                            }
-                        </select>
-                        <select @bind="articuloEditarSubseccion" class="form-control">
-                            <option value="">Seleccione una subsección</option>
-                            @foreach (var subseccion in subsecciones)
-                            {
-                                <option value="@subseccion["id"]" selected="@(articuloEditarSubseccion == subseccion["id"].ToString())">@subseccion["nombre"]</option>
-                            }
-                        </select>
-                        <button class="btn btn-sm btn-success" @onclick="() => GuardarEdicion(articulo)">Guardar</button>
-                        <button class="btn btn-sm btn-secondary" @onclick="CancelarEdicion">Cancelar</button>
-                    </div>
+                    <VerificarPermiso Accion="editar" Ruta="/Articulo">
+                        <div class="row g-3">
+                            <div class="col-md-2">
+                                <input @bind="articuloEditarId" class="form-control" disabled />
+                            </div>
+                            <div class="col-md-4">
+                                <input @bind="articuloEditarNombre" class="form-control" />
+                            </div>
+                            <div class="col-md-6">
+                                <textarea @bind="articuloEditarDescripcion" class="form-control"></textarea>
+                            </div>
+                            <div class="col-md-6">
+                                <select @bind="articuloEditarSeccion" class="form-select">
+                                    <option value="">Seleccione una sección</option>
+                                    @foreach (var seccion in secciones)
+                                    {
+                                        <option value="@seccion["id"]" selected="@(articuloEditarSeccion == seccion["id"].ToString())">
+                                            @seccion["nombre"]
+                                        </option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <select @bind="articuloEditarSubseccion" class="form-select">
+                                    <option value="">Seleccione una subsección</option>
+                                    @foreach (var subseccion in subsecciones)
+                                    {
+                                        <option value="@subseccion["id"]" selected="@(articuloEditarSubseccion == subseccion["id"].ToString())">
+                                            @subseccion["nombre"]
+                                        </option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <button class="btn btn-success" @onclick="() => GuardarEdicion(articulo)">
+                                    <i class="fas fa-save"></i> Guardar
+                                </button>
+                                <button class="btn btn-secondary" @onclick="CancelarEdicion">
+                                    <i class="fas fa-times"></i> Cancelar
+                                </button>
+                            </div>
+                        </div>
+                    </VerificarPermiso>
                 }
                 else
                 {
-                    <div>
-                        <span class="fw-bold">#@articulo["id"]</span> - @articulo["nombre"] 
-                        (Sección: @ObtenerNombreSeccion(articulo.ContainsKey("fkidseccion") ? articulo["fkidseccion"].ToString() : null), 
-                        Subsección: @ObtenerNombreSubseccion(articulo.ContainsKey("fkidsubseccion") ? articulo["fkidsubseccion"].ToString() : null))
-                        <p>@articulo["descripcion"]</p>
-                    </div>
-                    <div>
-                        <button class="btn btn-sm btn-primary" @onclick="() => IniciarEdicion(articulo)">Editar</button>
-                        <button class="btn btn-sm btn-danger" @onclick="() => EliminarArticulo(articulo)">Eliminar</button>
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h5 class="mb-1">
+                                <span class="fw-bold">#@articulo["id"]</span> - @articulo["nombre"]
+                            </h5>
+                            <p class="mb-1">@articulo["descripcion"]</p>
+                            <small class="text-muted">
+                                Sección: @ObtenerNombreSeccion(articulo.ContainsKey("fkidseccion") ? articulo["fkidseccion"].ToString() : null),
+                                Subsección: @ObtenerNombreSubseccion(articulo.ContainsKey("fkidsubseccion") ? articulo["fkidsubseccion"].ToString() : null)
+                            </small>
+                        </div>
+                        <div class="btn-group">
+                            <VerificarPermiso Accion="editar" Ruta="/Articulo">
+                                <button class="btn btn-outline-primary btn-sm" @onclick="() => IniciarEdicion(articulo)">
+                                    <i class="fas fa-edit"></i> Editar
+                                </button>
+                            </VerificarPermiso>
+                            
+                            <VerificarPermiso Accion="eliminar" Ruta="/Articulo">
+                                <button class="btn btn-outline-danger btn-sm" @onclick="() => EliminarArticulo(articulo)">
+                                    <i class="fas fa-trash"></i> Eliminar
+                                </button>
+                            </VerificarPermiso>
+                        </div>
                     </div>
                 }
-            </li>
+            </div>
         }
-    </ul>
+    </div>
 }
 
 @code {
