@@ -10,33 +10,6 @@
 
 <h3>Literales</h3>
 
-<VerificarPermiso Accion="crear" Ruta="/literal">
-    <div class="mb-3">
-        <div class="row g-3">
-            <div class="col-md-2">
-                <input @bind="nuevoLiteralId" class="form-control" placeholder="ID" />
-            </div>
-            <div class="col-md-6">
-                <input @bind="nuevoLiteralDescripcion" class="form-control" placeholder="Descripción" />
-            </div>
-            <div class="col-md-3">
-                <select @bind="nuevoLiteralArticulo" class="form-select">
-                    <option value="">Seleccione artículo</option>
-                    @foreach (var articulo in articulos)
-                    {
-                        <option value="@articulo["id"]">@articulo["nombre"]</option>
-                    }
-                </select>
-            </div>
-            <div class="col-md-1">
-                <button class="btn btn-success w-100" @onclick="CrearLiteral">
-                    <i class="fas fa-plus"></i> Crear
-                </button>
-            </div>
-        </div>
-    </div>
-</VerificarPermiso>
-
 @if (errorMensaje != null)
 {
     <div class="alert alert-danger">@errorMensaje</div>
@@ -60,61 +33,15 @@ else
                     <th>ID</th>
                     <th>Descripción</th>
                     <th>Artículo</th>
-                    <th>Acciones</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach (var literal in literales)
                 {
                     <tr>
-                        @if (literalEditarId == literal["id"].ToString())
-                        {
-                            <VerificarPermiso Accion="editar" Ruta="/literal">
-                                <td>
-                                    <input @bind="literalEditarId" class="form-control form-control-sm" disabled />
-                                </td>
-                                <td>
-                                    <input @bind="literalEditarDescripcion" class="form-control form-control-sm" />
-                                </td>
-                                <td>
-                                    <select @bind="literalEditarArticulo" class="form-select form-select-sm">
-                                        <option value="">Seleccione artículo</option>
-                                        @foreach (var articulo in articulos)
-                                        {
-                                            <option value="@articulo["id"]" selected="@(literalEditarArticulo == articulo["id"].ToString())">
-                                                @articulo["nombre"]
-                                            </option>
-                                        }
-                                    </select>
-                                </td>
-                                <td>
-                                    <button class="btn btn-sm btn-success me-1" @onclick="() => GuardarEdicion(literal)">
-                                        <i class="fas fa-save"></i> Guardar
-                                    </button>
-                                    <button class="btn btn-sm btn-secondary" @onclick="CancelarEdicion">
-                                        <i class="fas fa-times"></i> Cancelar
-                                    </button>
-                                </td>
-                            </VerificarPermiso>
-                        }
-                        else
-                        {
-                            <td>@literal["id"]</td>
-                            <td>@ObtenerDescripcionLiteral(literal)</td>
-                            <td>@ObtenerNombreArticulo(literal)</td>
-                            <td>
-                                <VerificarPermiso Accion="editar" Ruta="/literal">
-                                    <button class="btn btn-sm btn-primary me-1" @onclick="() => IniciarEdicion(literal)">
-                                        <i class="fas fa-edit"></i> Editar
-                                    </button>
-                                </VerificarPermiso>
-                                <VerificarPermiso Accion="eliminar" Ruta="/literal">
-                                    <button class="btn btn-sm btn-danger" @onclick="() => EliminarLiteral(literal)">
-                                        <i class="fas fa-trash-alt"></i> Eliminar
-                                    </button>
-                                </VerificarPermiso>
-                            </td>
-                        }
+                        <td>@literal["id"]</td>
+                        <td>@ObtenerDescripcionLiteral(literal)</td>
+                        <td>@ObtenerNombreArticulo(literal)</td>
                     </tr>
                 }
             </tbody>
@@ -127,12 +54,6 @@ else
     private const string TABLA = "literal";
     private List<Dictionary<string, object>> literales = new List<Dictionary<string, object>>();
     private List<Dictionary<string, object>> articulos = new List<Dictionary<string, object>>();
-    private string nuevoLiteralId = string.Empty;
-    private string nuevoLiteralDescripcion = string.Empty;
-    private string nuevoLiteralArticulo = string.Empty;
-    private string literalEditarId = string.Empty;
-    private string literalEditarDescripcion = string.Empty;
-    private string literalEditarArticulo = string.Empty;
     private string? errorMensaje = null;
     private bool cargando = true;
 
@@ -164,13 +85,6 @@ else
         {
             var resultado = await servicioEntidad.ObtenerTodosAsync(PROYECTO, TABLA);
             literales = resultado?.Count > 0 ? resultado : new List<Dictionary<string, object>>();
-            
-            // Asegurar que cada literal tenga las claves requeridas
-            foreach (var literal in literales)
-            {
-                if (!literal.ContainsKey("descripcion")) literal["descripcion"] = "";
-                if (!literal.ContainsKey("fkidarticulo")) literal["fkidarticulo"] = "";
-            }
         }
         catch (Exception ex)
         {
@@ -183,139 +97,6 @@ else
             StateHasChanged();
         }
     }
-
-    private async Task CrearLiteral()
-    {
-        if (string.IsNullOrWhiteSpace(nuevoLiteralId))
-        {
-            errorMensaje = "El ID es requerido";
-            return;
-        }
-
-        errorMensaje = null;
-
-        try
-        {
-            var nuevoLiteral = new Dictionary<string, object>
-            {
-                { "id", nuevoLiteralId },
-                { "descripcion", nuevoLiteralDescripcion },
-                { "fkidarticulo", nuevoLiteralArticulo }
-            };
-
-            bool resultado = await servicioEntidad.CrearAsync(PROYECTO, TABLA, nuevoLiteral);
-            
-            if (resultado)
-            {
-                nuevoLiteralId = string.Empty;
-                nuevoLiteralDescripcion = string.Empty;
-                nuevoLiteralArticulo = string.Empty;
-                await ObtenerLiterales();
-            }
-            else
-            {
-                errorMensaje = "Error al crear el literal. Intente nuevamente.";
-            }
-        }
-        catch (Exception ex)
-        {
-            errorMensaje = $"Error crítico: {ex.Message}";
-        }
-    }
-
-    private void IniciarEdicion(Dictionary<string, object> literal)
-    {
-        literalEditarId = literal["id"].ToString();
-        literalEditarDescripcion = literal.ContainsKey("descripcion") ? literal["descripcion"].ToString() : "";
-        literalEditarArticulo = literal.ContainsKey("fkidarticulo") ? literal["fkidarticulo"].ToString() : "";
-    }
-
-    private void CancelarEdicion()
-    {
-        literalEditarId = string.Empty;
-        literalEditarDescripcion = string.Empty;
-        literalEditarArticulo = string.Empty;
-    }
-
-    private async Task GuardarEdicion(Dictionary<string, object> literal)
-    {
-        try
-        {
-            var literalActualizado = new Dictionary<string, object>
-            {
-                { "descripcion", literalEditarDescripcion },
-                { "fkidarticulo", literalEditarArticulo }
-            };
-
-            bool resultado = await servicioEntidad.ActualizarAsync(
-                PROYECTO, 
-                TABLA, 
-                "id", 
-                literal["id"].ToString(), 
-                literalActualizado
-            );
-
-            if (resultado)
-            {
-                await ObtenerLiterales();
-                CancelarEdicion();
-            }
-            else
-            {
-                errorMensaje = "Error al actualizar el literal.";
-            }
-        }
-        catch (Exception ex)
-        {
-            errorMensaje = $"Error de actualización: {ex.Message}";
-        }
-    }
-
-    private async Task EliminarLiteral(Dictionary<string, object> literal)
-{
-    bool confirmar = await JSRuntime.InvokeAsync<bool>("confirm", 
-        $"¿Está seguro de eliminar el literal '{ObtenerDescripcionLiteral(literal)}'?");
-    
-    if (!confirmar) return;
-
-    try
-    {
-        // Primero eliminar registros relacionados en indicador
-        bool relacionesEliminadas = await servicioEntidad.EliminarAsync(
-            PROYECTO, 
-            "indicador", 
-            "fkidliteral", 
-            literal["id"]?.ToString() ?? string.Empty
-        );
-
-        if (!relacionesEliminadas)
-        {
-            errorMensaje = "No se pudieron eliminar las relaciones del literal.";
-            return;
-        }
-
-        // Luego eliminar el literal
-        bool resultado = await servicioEntidad.EliminarAsync(
-            PROYECTO, 
-            TABLA, 
-            "id", 
-            literal["id"]?.ToString() ?? string.Empty
-        );
-
-        if (resultado)
-        {
-            await ObtenerLiterales();
-        }
-        else
-        {
-            errorMensaje = "Error al eliminar el literal después de eliminar sus relaciones.";
-        }
-    }
-    catch (Exception ex)
-    {
-        errorMensaje = $"Error de eliminación: {ex.Message}";
-    }
-}
 
     private string ObtenerDescripcionLiteral(Dictionary<string, object> literal)
     {

@@ -10,20 +10,6 @@
 
 
 <h3>Parágrafos</h3>
-<VerificarPermiso Accion="crear" Ruta="/paragrafo">
-    <div>
-        <input @bind="nuevoParagrafoId" placeholder="ID del parágrafo" class="form-control mb-2" />
-        <input @bind="nuevoParagrafoDescripcion" placeholder="Descripción del parágrafo" class="form-control mb-2" />
-        <select @bind="nuevoParagrafoArticulo" class="form-select mb-2">
-            <option value="">Seleccione un artículo</option>
-            @foreach (var articulo in articulos)
-            {
-                <option value="@articulo["id"]">@articulo["nombre"]</option>
-            }
-        </select>
-        <button class="btn btn-success" @onclick="CrearParagrafo">Crear</button>
-    </div>
-</VerificarPermiso>
 
 @if (errorMensaje != null)
 {
@@ -47,23 +33,6 @@ else
             <li class="list-group-item d-flex justify-content-between align-items-center">
                 @if (paragrafoEditarId == paragrafo["id"].ToString())
                 {
-                    <VerificarPermiso Accion="editar" Ruta="/paragrafo">
-                        <div class="d-flex gap-2">
-                            <input @bind="paragrafoEditarId" class="form-control" disabled />
-                            <input @bind="paragrafoEditarDescripcion" class="form-control" />
-                            <select @bind="paragrafoEditarArticulo" class="form-select">
-                                <option value="">Seleccione un artículo</option>
-                                @foreach (var articulo in articulos)
-                                {
-                                    <option value="@articulo["id"]" selected="@(paragrafoEditarArticulo == articulo["id"].ToString())">
-                                        @articulo["nombre"]
-                                    </option>
-                                }
-                            </select>
-                            <button class="btn btn-sm btn-success" @onclick="() => GuardarEdicion(paragrafo)">Guardar</button>
-                            <button class="btn btn-sm btn-secondary" @onclick="CancelarEdicion">Cancelar</button>
-                        </div>
-                    </VerificarPermiso>
                 }
                 else
                 {
@@ -72,12 +41,7 @@ else
                         (Artículo: @ObtenerNombreArticulo(paragrafo["fkidarticulo"].ToString()))
                     </div>
                     <div>
-                        <VerificarPermiso Accion="editar" Ruta="/paragrafo">
-                            <button class="btn btn-sm btn-primary" @onclick="() => IniciarEdicion(paragrafo)">Editar</button>
-                        </VerificarPermiso>
-                        <VerificarPermiso Accion="eliminar" Ruta="/paragrafo">
-                            <button class="btn btn-sm btn-danger" @onclick="() => EliminarParagrafo(paragrafo)">Eliminar</button>
-                        </VerificarPermiso>
+                
                     </div>
                 }
             </li>

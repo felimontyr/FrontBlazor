@@ -10,48 +10,6 @@
 
 <h3>Artículos</h3>
 
-<VerificarPermiso Accion="crear" Ruta="/Articulo">
-    <div class="card mb-3">
-        <div class="card-body">
-            <h5 class="card-title">Crear Nuevo Artículo</h5>
-            <div class="row g-3">
-                <div class="col-md-2">
-                    <input @bind="nuevoArticuloId" class="form-control" placeholder="ID del artículo" />
-                </div>
-                <div class="col-md-4">
-                    <input @bind="nuevoArticuloNombre" class="form-control" placeholder="Nombre del artículo" />
-                </div>
-                <div class="col-md-6">
-                    <textarea @bind="nuevoArticuloDescripcion" class="form-control" placeholder="Descripción del artículo"></textarea>
-                </div>
-                <div class="col-md-6">
-                    <select @bind="nuevoArticuloSeccion" class="form-select">
-                        <option value="">Seleccione una sección</option>
-                        @foreach (var seccion in secciones)
-                        {
-                            <option value="@seccion["id"]">@seccion["nombre"]</option>
-                        }
-                    </select>
-                </div>
-                <div class="col-md-6">
-                    <select @bind="nuevoArticuloSubseccion" class="form-select">
-                        <option value="">Seleccione una subsección</option>
-                        @foreach (var subseccion in subsecciones)
-                        {
-                            <option value="@subseccion["id"]">@subseccion["nombre"]</option>
-                        }
-                    </select>
-                </div>
-                <div class="col-12">
-                    <button class="btn btn-success" @onclick="CrearArticulo">
-                        <i class="fas fa-plus"></i> Crear Artículo
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-</VerificarPermiso>
-
 @if (errorMensaje != null)
 {
     <div class="alert alert-danger">@errorMensaje</div>
@@ -102,14 +60,6 @@ else
                                     }
                                 </select>
                             </div>
-                            <div class="col-12">
-                                <button class="btn btn-success" @onclick="() => GuardarEdicion(articulo)">
-                                    <i class="fas fa-save"></i> Guardar
-                                </button>
-                                <button class="btn btn-secondary" @onclick="CancelarEdicion">
-                                    <i class="fas fa-times"></i> Cancelar
-                                </button>
-                            </div>
                         </div>
                     </VerificarPermiso>
                 }
@@ -125,19 +75,6 @@ else
                                 Sección: @ObtenerNombreSeccion(articulo.ContainsKey("fkidseccion") ? articulo["fkidseccion"].ToString() : null),
                                 Subsección: @ObtenerNombreSubseccion(articulo.ContainsKey("fkidsubseccion") ? articulo["fkidsubseccion"].ToString() : null)
                             </small>
-                        </div>
-                        <div class="btn-group">
-                            <VerificarPermiso Accion="editar" Ruta="/Articulo">
-                                <button class="btn btn-outline-primary btn-sm" @onclick="() => IniciarEdicion(articulo)">
-                                    <i class="fas fa-edit"></i> Editar
-                                </button>
-                            </VerificarPermiso>
-                            
-                            <VerificarPermiso Accion="eliminar" Ruta="/Articulo">
-                                <button class="btn btn-outline-danger btn-sm" @onclick="() => EliminarArticulo(articulo)">
-                                    <i class="fas fa-trash"></i> Eliminar
-                                </button>
-                            </VerificarPermiso>
                         </div>
                     </div>
                 }

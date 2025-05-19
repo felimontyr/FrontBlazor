@@ -132,8 +132,8 @@
                                 var permisos = nombreRol.ToLower() switch
                                 {
                                     "admin" => new { crear = true, editar = true, leer = true, eliminar = true },
-                                    "verificador" => new { crear = false, editar = true, leer = true, eliminar = false },
-                                    "validador" => new { crear = true, editar = true, leer = true, eliminar = false },
+                                    "verificador" => new { crear = false, editar = false, leer = true, eliminar = false },
+                                    "validador" => new { crear = false, editar = true, leer = true, eliminar = false },
                                     "invitado" => new { crear = false, editar = false, leer = true, eliminar = false },
                                     _ => new { crear = false, editar = false, leer = true, eliminar = false }
                                 };
