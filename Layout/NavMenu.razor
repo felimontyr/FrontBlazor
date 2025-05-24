@@ -1,7 +1,7 @@
 ﻿@inject IJSRuntime JSRuntime
 @inject NavigationManager Navigation
 
-<div class="nav-menu-wrapper">
+<div class="nav-menu-wrapper overflow-auto" style="max-height: 90vh;">
     <ul class="nav flex-column">
         @if (usuarioEmail != null)
         {

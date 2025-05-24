@@ -20,6 +20,10 @@ else if (!string.IsNullOrEmpty(errorMensaje))
 }
 else
 {
+    <NavLink class="btn btn-success w-15 mb-3" href="/indicador-consultas">
+    Consultas de Indicadores
+    </NavLink>
+
     <VerificarPermiso Accion="crear" Ruta="/indicador">
         <div class="mb-3 row g-2">
             <div class="col"><input @bind="nuevoCodigo" class="form-control" placeholder="Código" /></div>
@@ -782,325 +786,324 @@ private string mensajeModalFuentesPorIndicador = string.Empty;
         return "Fecha inválida";
     }
 
-  private async Task CrearRelacion()
-{
-    mensajeModal = string.Empty;
-
-    if (string.IsNullOrWhiteSpace(nuevoResponsable) || indicadorSeleccionado == null)
+    private async Task CrearRelacion()
     {
-        mensajeModal = "Debe seleccionar un actor.";
-        return;
-    }
+        mensajeModal = string.Empty;
 
-    string indicadorId = indicadorSeleccionado["id"].ToString();
-
-    if (relaciones.Any(r =>
-        r["fkidresponsable"].ToString() == nuevoResponsable &&
-        r["fkidindicador"].ToString() == indicadorId))
-    {
-        mensajeModal = "La relación ya existe.";
-        return;
-    }
-
-    try
-    {
-        var nuevaRelacion = new Dictionary<string, object>
+        if (string.IsNullOrWhiteSpace(nuevoResponsable) || indicadorSeleccionado == null)
         {
-            { "fkidresponsable", nuevoResponsable },
-            { "fkidindicador", indicadorId },
-            { "fechaasignacion", nuevaFechaAsignacion.ToString("yyyy-MM-dd") }
-        };
-
-        var resultado = await servicioEntidad.CrearAsync(PROYECTO, TABLA_RESPONSABLES, nuevaRelacion);
-
-        if (resultado)
-        {
-            mensajeModal = "Responsable asignado correctamente.";
-            nuevoResponsable = string.Empty;
-            nuevaFechaAsignacion = DateTime.Today;
-            await ObtenerRelacionesPorIndicador(indicadorId);
+            mensajeModal = "Debe seleccionar un actor.";
+            return;
         }
-        else
+
+        string indicadorId = indicadorSeleccionado["id"].ToString();
+
+        if (relaciones.Any(r =>
+            r["fkidresponsable"].ToString() == nuevoResponsable &&
+            r["fkidindicador"].ToString() == indicadorId))
         {
-            mensajeModal = "Error al crear la relación.";
+            mensajeModal = "La relación ya existe.";
+            return;
+        }
+
+        try
+        {
+            var nuevaRelacion = new Dictionary<string, object>
+            {
+                { "fkidresponsable", nuevoResponsable },
+                { "fkidindicador", indicadorId },
+                { "fechaasignacion", nuevaFechaAsignacion.ToString("yyyy-MM-dd") }
+            };
+
+            var resultado = await servicioEntidad.CrearAsync(PROYECTO, TABLA_RESPONSABLES, nuevaRelacion);
+
+            if (resultado)
+            {
+                mensajeModal = "Responsable asignado correctamente.";
+                nuevoResponsable = string.Empty;
+                nuevaFechaAsignacion = DateTime.Today;
+                await ObtenerRelacionesPorIndicador(indicadorId);
+            }
+            else
+            {
+                mensajeModal = "Error al crear la relación.";
+            }
+        }
+        catch (Exception ex)
+        {
+            mensajeModal = $"Error crítico: {ex.Message}";
         }
     }
-    catch (Exception ex)
+
+    private async Task EliminarRelacion(Dictionary<string, object> relacion)
     {
-        mensajeModal = $"Error crítico: {ex.Message}";
+        bool confirmar = await JSRuntime.InvokeAsync<bool>("confirm",
+            $"¿Deseas eliminar la relación de {relacion["fkidresponsable"]} con indicador {relacion["fkidindicador"]}?");
+
+        if (!confirmar) return;
+
+        try 
+        {
+            var parametros = new Dictionary<string, object>
+            {
+                { "fkidresponsable", relacion["fkidresponsable"] },
+                { "fkidindicador", relacion["fkidindicador"] }
+            };
+
+            // Cambiado: Usar TABLA_RESPONSABLES en lugar de TABLA
+            var resultado = await servicioEntidad.EjecutarProcedimientoAsync(
+                PROYECTO, 
+                TABLA_RESPONSABLES, 
+                "sp_eliminar_responsablesporindicador", 
+                parametros
+            );
+
+            if (resultado != null)
+            {
+                mensajeModal = "Relación eliminada correctamente.";
+                await ObtenerRelacionesPorIndicador(relacion["fkidindicador"].ToString());
+            }
+            else
+            {
+                mensajeModal = "Error al eliminar la relación.";
+            }
+        }
+        catch (Exception ex)
+        {
+            mensajeModal = $"Error al eliminar la relación: {ex.Message}";
+            await JSRuntime.InvokeVoidAsync("console.error", "Error al eliminar relación:", ex.Message);
+        }
     }
-}
 
- private async Task EliminarRelacion(Dictionary<string, object> relacion)
-{
-    bool confirmar = await JSRuntime.InvokeAsync<bool>("confirm",
-        $"¿Deseas eliminar la relación de {relacion["fkidresponsable"]} con indicador {relacion["fkidindicador"]}?");
-
-    if (!confirmar) return;
-
-    try 
+    //metodos para la representación visual
+    private async Task AbrirModalRepresenVisualPorIndicador(Dictionary<string, object> indicador)
     {
+        indicadorSeleccionado = indicador;
+        mostrarModalRepresenVisualPorIndicador = true;
+        mensajeModalRepresenVisualPorIndicador = "";
+        nuevoIdRepresenVisualPorIndicador = "";
+        
+        try
+        {
+            represenvisuales = await servicioEntidad.ObtenerTodosAsync(PROYECTO, "represenvisual") ?? new();
+            await ObtenerRelacionesRepresenVisual(indicador["id"].ToString());
+        }
+        catch (Exception ex)
+        {
+            mensajeModalRepresenVisualPorIndicador = $"Error al cargar datos: {ex.Message}";
+        }
+    }
+
+    private async Task ObtenerRelacionesRepresenVisual(string indicadorId)
+    {
+        try 
+        {
+            var todasLasRelaciones = await servicioEntidad.ObtenerTodosAsync(PROYECTO, TABLA_REPRESENVISUAL_INDICADOR) ?? new();
+            relacionesRepresenVisual = todasLasRelaciones
+                .Where(r => r["fkidindicador"].ToString() == indicadorId)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            mensajeModalRepresenVisualPorIndicador = $"Error al cargar relaciones: {ex.Message}";
+        }
+    }
+
+    private async Task AsignarRepresenVisualPorIndicador()
+    {
+        mensajeModalRepresenVisualPorIndicador = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(nuevoIdRepresenVisualPorIndicador))
+        {
+            mensajeModalRepresenVisualPorIndicador = "Debe seleccionar una representación visual.";
+            return;
+        }
+
+        if (relacionesRepresenVisual.Any(r => 
+            r["fkidrepresenvisual"].ToString() == nuevoIdRepresenVisualPorIndicador))
+        {
+            mensajeModalRepresenVisualPorIndicador = "La relación ya existe.";
+            return;
+        }
+
         var parametros = new Dictionary<string, object>
         {
-            { "fkidresponsable", relacion["fkidresponsable"] },
-            { "fkidindicador", relacion["fkidindicador"] }
+            { "nombreSP", "sp_insertar_represenvisualporindicador" },
+            { "fkidindicador", int.Parse(indicadorSeleccionado["id"].ToString()) },
+            { "fkidrepresenvisual", int.Parse(nuevoIdRepresenVisualPorIndicador) }
         };
 
-        // Cambiado: Usar TABLA_RESPONSABLES en lugar de TABLA
         var resultado = await servicioEntidad.EjecutarProcedimientoAsync(
             PROYECTO, 
-            TABLA_RESPONSABLES, 
-            "sp_eliminar_responsablesporindicador", 
+            TABLA_REPRESENVISUAL_INDICADOR,
+            "sp_insertar_represenvisualporindicador", 
             parametros
         );
 
         if (resultado != null)
         {
-            mensajeModal = "Relación eliminada correctamente.";
-            await ObtenerRelacionesPorIndicador(relacion["fkidindicador"].ToString());
+            mensajeModalRepresenVisualPorIndicador = "Relación creada correctamente.";
+            nuevoIdRepresenVisualPorIndicador = string.Empty;
+            await ObtenerRelacionesRepresenVisual(indicadorSeleccionado["id"].ToString());
         }
         else
         {
-            mensajeModal = "Error al eliminar la relación.";
+            mensajeModalRepresenVisualPorIndicador = "Error al crear la relación.";
         }
     }
-    catch (Exception ex)
+
+    private async Task EliminarRepresenVisualPorIndicador(Dictionary<string, object> relacion)
     {
-        mensajeModal = $"Error al eliminar la relación: {ex.Message}";
-        await JSRuntime.InvokeVoidAsync("console.error", "Error al eliminar relación:", ex.Message);
+        bool confirmar = await JSRuntime.InvokeAsync<bool>("confirm",
+            $"¿Desea eliminar esta representación visual del indicador?");
+
+        if (!confirmar) return;
+
+        var parametros = new Dictionary<string, object>
+        {
+            { "nombreSP", "sp_eliminar_represenvisualporindicador" },
+            { "fkidindicador", int.Parse(relacion["fkidindicador"].ToString()) },
+            { "fkidrepresenvisual", int.Parse(relacion["fkidrepresenvisual"].ToString()) }
+        };
+
+        var resultado = await servicioEntidad.EjecutarProcedimientoAsync(
+            PROYECTO,
+            TABLA_REPRESENVISUAL_INDICADOR,
+            "sp_eliminar_represenvisualporindicador",
+            parametros
+        );
+
+        if (resultado != null)
+        {
+            mensajeModalRepresenVisualPorIndicador = "Relación eliminada correctamente.";
+            await ObtenerRelacionesRepresenVisual(indicadorSeleccionado["id"].ToString());
+        }
+        else
+        {
+            mensajeModalRepresenVisualPorIndicador = "Error al eliminar la relación.";
+        }
+    }
+
+    private void CerrarModalRepresenVisualPorIndicador()
+    {
+        mostrarModalRepresenVisualPorIndicador = false;
+        indicadorSeleccionado = null;
+        relacionesRepresenVisual.Clear();
+    }
+
+    //metodos para fuentes por indicador
+    private async Task AbrirModalFuentesPorIndicador(Dictionary<string, object> indicador)
+    {
+        indicadorSeleccionado = indicador;
+        mostrarModalFuentesPorIndicador = true;
+        mensajeModalFuentesPorIndicador = "";
+        nuevoIdFuente = "";
+        
+        try
+        {
+            fuentes = await servicioEntidad.ObtenerTodosAsync(PROYECTO, "fuente") ?? new();
+            await ObtenerRelacionesFuentes(indicador["id"].ToString());
+        }
+        catch (Exception ex)
+        {
+            mensajeModalFuentesPorIndicador = $"Error al cargar datos: {ex.Message}";
+        }
+    }
+
+    private async Task ObtenerRelacionesFuentes(string indicadorId)
+    {
+        try 
+        {
+            var todasLasRelaciones = await servicioEntidad.ObtenerTodosAsync(PROYECTO, TABLA_FUENTES_INDICADOR) ?? new();
+            relacionesFuentes = todasLasRelaciones
+                .Where(r => r["fkidindicador"].ToString() == indicadorId)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            mensajeModalFuentesPorIndicador = $"Error al cargar relaciones: {ex.Message}";
+        }
+    }
+
+    private async Task AsignarFuentePorIndicador()
+    {
+        mensajeModalFuentesPorIndicador = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(nuevoIdFuente))
+        {
+            mensajeModalFuentesPorIndicador = "Debe seleccionar una fuente.";
+            return;
+        }
+
+        if (relacionesFuentes.Any(r => 
+            r["fkidfuente"].ToString() == nuevoIdFuente))
+        {
+            mensajeModalFuentesPorIndicador = "La relación ya existe.";
+            return;
+        }
+
+        var parametros = new Dictionary<string, object>
+        {
+            { "nombreSP", "sp_insertar_fuentesporindicador" },
+            { "fkidfuente", int.Parse(nuevoIdFuente) },
+            { "fkidindicador", int.Parse(indicadorSeleccionado["id"].ToString()) }
+        };
+
+        var resultado = await servicioEntidad.EjecutarProcedimientoAsync(
+            PROYECTO, 
+            TABLA_FUENTES_INDICADOR,
+            "sp_insertar_fuentesporindicador", 
+            parametros
+        );
+
+        if (resultado != null)
+        {
+            mensajeModalFuentesPorIndicador = "Fuente asignada correctamente.";
+            nuevoIdFuente = string.Empty;
+            await ObtenerRelacionesFuentes(indicadorSeleccionado["id"].ToString());
+        }
+        else
+        {
+            mensajeModalFuentesPorIndicador = "Error al asignar la fuente.";
+        }
+    }
+
+    private async Task EliminarFuentePorIndicador(Dictionary<string, object> relacion)
+    {
+        bool confirmar = await JSRuntime.InvokeAsync<bool>("confirm",
+            $"¿Desea eliminar esta fuente del indicador?");
+
+        if (!confirmar) return;
+
+        var parametros = new Dictionary<string, object>
+        {
+            { "nombreSP", "sp_eliminar_fuentesporindicador" },
+            { "fkidfuente", int.Parse(relacion["fkidfuente"].ToString()) },
+            { "fkidindicador", int.Parse(relacion["fkidindicador"].ToString()) }
+        };
+
+        var resultado = await servicioEntidad.EjecutarProcedimientoAsync(
+            PROYECTO,
+            TABLA_FUENTES_INDICADOR,
+            "sp_eliminar_fuentesporindicador",
+            parametros
+        );
+
+        if (resultado != null)
+        {
+            mensajeModalFuentesPorIndicador = "Fuente eliminada correctamente.";
+            await ObtenerRelacionesFuentes(indicadorSeleccionado["id"].ToString());
+        }
+        else
+        {
+            mensajeModalFuentesPorIndicador = "Error al eliminar la fuente.";
+        }
+    }
+
+    private void CerrarModalFuentesPorIndicador()
+    {
+        mostrarModalFuentesPorIndicador = false;
+        indicadorSeleccionado = null;
+        relacionesFuentes.Clear();
     }
 }
-
-//metodos para la representación visual
-private async Task AbrirModalRepresenVisualPorIndicador(Dictionary<string, object> indicador)
-{
-    indicadorSeleccionado = indicador;
-    mostrarModalRepresenVisualPorIndicador = true;
-    mensajeModalRepresenVisualPorIndicador = "";
-    nuevoIdRepresenVisualPorIndicador = "";
-    
-    try
-    {
-        represenvisuales = await servicioEntidad.ObtenerTodosAsync(PROYECTO, "represenvisual") ?? new();
-        await ObtenerRelacionesRepresenVisual(indicador["id"].ToString());
-    }
-    catch (Exception ex)
-    {
-        mensajeModalRepresenVisualPorIndicador = $"Error al cargar datos: {ex.Message}";
-    }
-}
-
-private async Task ObtenerRelacionesRepresenVisual(string indicadorId)
-{
-    try 
-    {
-        var todasLasRelaciones = await servicioEntidad.ObtenerTodosAsync(PROYECTO, TABLA_REPRESENVISUAL_INDICADOR) ?? new();
-        relacionesRepresenVisual = todasLasRelaciones
-            .Where(r => r["fkidindicador"].ToString() == indicadorId)
-            .ToList();
-    }
-    catch (Exception ex)
-    {
-        mensajeModalRepresenVisualPorIndicador = $"Error al cargar relaciones: {ex.Message}";
-    }
-}
-
-private async Task AsignarRepresenVisualPorIndicador()
-{
-    mensajeModalRepresenVisualPorIndicador = string.Empty;
-
-    if (string.IsNullOrWhiteSpace(nuevoIdRepresenVisualPorIndicador))
-    {
-        mensajeModalRepresenVisualPorIndicador = "Debe seleccionar una representación visual.";
-        return;
-    }
-
-    if (relacionesRepresenVisual.Any(r => 
-        r["fkidrepresenvisual"].ToString() == nuevoIdRepresenVisualPorIndicador))
-    {
-        mensajeModalRepresenVisualPorIndicador = "La relación ya existe.";
-        return;
-    }
-
-    var parametros = new Dictionary<string, object>
-    {
-        { "nombreSP", "sp_insertar_represenvisualporindicador" },
-        { "fkidindicador", int.Parse(indicadorSeleccionado["id"].ToString()) },
-        { "fkidrepresenvisual", int.Parse(nuevoIdRepresenVisualPorIndicador) }
-    };
-
-    var resultado = await servicioEntidad.EjecutarProcedimientoAsync(
-        PROYECTO, 
-        TABLA_REPRESENVISUAL_INDICADOR,
-        "sp_insertar_represenvisualporindicador", 
-        parametros
-    );
-
-    if (resultado != null)
-    {
-        mensajeModalRepresenVisualPorIndicador = "Relación creada correctamente.";
-        nuevoIdRepresenVisualPorIndicador = string.Empty;
-        await ObtenerRelacionesRepresenVisual(indicadorSeleccionado["id"].ToString());
-    }
-    else
-    {
-        mensajeModalRepresenVisualPorIndicador = "Error al crear la relación.";
-    }
-}
-
-private async Task EliminarRepresenVisualPorIndicador(Dictionary<string, object> relacion)
-{
-    bool confirmar = await JSRuntime.InvokeAsync<bool>("confirm",
-        $"¿Desea eliminar esta representación visual del indicador?");
-
-    if (!confirmar) return;
-
-    var parametros = new Dictionary<string, object>
-    {
-        { "nombreSP", "sp_eliminar_represenvisualporindicador" },
-        { "fkidindicador", int.Parse(relacion["fkidindicador"].ToString()) },
-        { "fkidrepresenvisual", int.Parse(relacion["fkidrepresenvisual"].ToString()) }
-    };
-
-    var resultado = await servicioEntidad.EjecutarProcedimientoAsync(
-        PROYECTO,
-        TABLA_REPRESENVISUAL_INDICADOR,
-        "sp_eliminar_represenvisualporindicador",
-        parametros
-    );
-
-    if (resultado != null)
-    {
-        mensajeModalRepresenVisualPorIndicador = "Relación eliminada correctamente.";
-        await ObtenerRelacionesRepresenVisual(indicadorSeleccionado["id"].ToString());
-    }
-    else
-    {
-        mensajeModalRepresenVisualPorIndicador = "Error al eliminar la relación.";
-    }
-}
-
-private void CerrarModalRepresenVisualPorIndicador()
-{
-    mostrarModalRepresenVisualPorIndicador = false;
-    indicadorSeleccionado = null;
-    relacionesRepresenVisual.Clear();
-}
-
-//metodos para fuentes por indicador
-private async Task AbrirModalFuentesPorIndicador(Dictionary<string, object> indicador)
-{
-    indicadorSeleccionado = indicador;
-    mostrarModalFuentesPorIndicador = true;
-    mensajeModalFuentesPorIndicador = "";
-    nuevoIdFuente = "";
-    
-    try
-    {
-        fuentes = await servicioEntidad.ObtenerTodosAsync(PROYECTO, "fuente") ?? new();
-        await ObtenerRelacionesFuentes(indicador["id"].ToString());
-    }
-    catch (Exception ex)
-    {
-        mensajeModalFuentesPorIndicador = $"Error al cargar datos: {ex.Message}";
-    }
-}
-
-private async Task ObtenerRelacionesFuentes(string indicadorId)
-{
-    try 
-    {
-        var todasLasRelaciones = await servicioEntidad.ObtenerTodosAsync(PROYECTO, TABLA_FUENTES_INDICADOR) ?? new();
-        relacionesFuentes = todasLasRelaciones
-            .Where(r => r["fkidindicador"].ToString() == indicadorId)
-            .ToList();
-    }
-    catch (Exception ex)
-    {
-        mensajeModalFuentesPorIndicador = $"Error al cargar relaciones: {ex.Message}";
-    }
-}
-
-private async Task AsignarFuentePorIndicador()
-{
-    mensajeModalFuentesPorIndicador = string.Empty;
-
-    if (string.IsNullOrWhiteSpace(nuevoIdFuente))
-    {
-        mensajeModalFuentesPorIndicador = "Debe seleccionar una fuente.";
-        return;
-    }
-
-    if (relacionesFuentes.Any(r => 
-        r["fkidfuente"].ToString() == nuevoIdFuente))
-    {
-        mensajeModalFuentesPorIndicador = "La relación ya existe.";
-        return;
-    }
-
-    var parametros = new Dictionary<string, object>
-    {
-        { "nombreSP", "sp_insertar_fuentesporindicador" },
-        { "fkidfuente", int.Parse(nuevoIdFuente) },
-        { "fkidindicador", int.Parse(indicadorSeleccionado["id"].ToString()) }
-    };
-
-    var resultado = await servicioEntidad.EjecutarProcedimientoAsync(
-        PROYECTO, 
-        TABLA_FUENTES_INDICADOR,
-        "sp_insertar_fuentesporindicador", 
-        parametros
-    );
-
-    if (resultado != null)
-    {
-        mensajeModalFuentesPorIndicador = "Fuente asignada correctamente.";
-        nuevoIdFuente = string.Empty;
-        await ObtenerRelacionesFuentes(indicadorSeleccionado["id"].ToString());
-    }
-    else
-    {
-        mensajeModalFuentesPorIndicador = "Error al asignar la fuente.";
-    }
-}
-
-private async Task EliminarFuentePorIndicador(Dictionary<string, object> relacion)
-{
-    bool confirmar = await JSRuntime.InvokeAsync<bool>("confirm",
-        $"¿Desea eliminar esta fuente del indicador?");
-
-    if (!confirmar) return;
-
-    var parametros = new Dictionary<string, object>
-    {
-        { "nombreSP", "sp_eliminar_fuentesporindicador" },
-        { "fkidfuente", int.Parse(relacion["fkidfuente"].ToString()) },
-        { "fkidindicador", int.Parse(relacion["fkidindicador"].ToString()) }
-    };
-
-    var resultado = await servicioEntidad.EjecutarProcedimientoAsync(
-        PROYECTO,
-        TABLA_FUENTES_INDICADOR,
-        "sp_eliminar_fuentesporindicador",
-        parametros
-    );
-
-    if (resultado != null)
-    {
-        mensajeModalFuentesPorIndicador = "Fuente eliminada correctamente.";
-        await ObtenerRelacionesFuentes(indicadorSeleccionado["id"].ToString());
-    }
-    else
-    {
-        mensajeModalFuentesPorIndicador = "Error al eliminar la fuente.";
-    }
-}
-
-private void CerrarModalFuentesPorIndicador()
-{
-    mostrarModalFuentesPorIndicador = false;
-    indicadorSeleccionado = null;
-    relacionesFuentes.Clear();
-}
-}
-

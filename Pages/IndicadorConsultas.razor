@@ -1,0 +1,217 @@
+@page "/indicador-consultas"
+@inject HttpClient Http
+@inject IJSRuntime JSRuntime
+
+<h3>Consultas de Indicadores</h3>
+
+@if (!datosCargados)
+{
+    <p class="text-muted">Cargando información...</p>
+}
+else if (!string.IsNullOrEmpty(errorMensaje))
+{
+    <div class="alert alert-danger">@errorMensaje</div>
+}
+else
+{
+    <div class="container mb-3">
+    <div class="row g-2">
+        <div class="col-12 col-md-4">
+            <button class="btn btn-primary w-100" @onclick="ObtenerConsulta1">Consulta 1</button>
+        </div>
+        <div class="col-12 col-md-4">
+            <button class="btn btn-primary w-100" @onclick="ObtenerConsulta2">Consulta 2</button>
+        </div>
+        <div class="col-12 col-md-4">
+            <button class="btn btn-primary w-100" @onclick="ObtenerConsulta3">Consulta 3</button>
+        </div>
+        <div class="col-12 col-md-4">
+            <button class="btn btn-primary w-100" @onclick="ObtenerConsulta4">Consulta 4</button>
+        </div>
+        <div class="col-12 col-md-4">
+            <button class="btn btn-primary w-100" @onclick="ObtenerConsulta5">Consulta 5</button>
+        </div>
+        <div class="col-12 col-md-4">
+            <button class="btn btn-primary w-100" @onclick="ObtenerConsulta6">Consulta 6</button>
+        </div>
+    </div>
+    <NavLink class="btn btn-secondary mb-3" href="/indicador">
+    Cerrar
+    </NavLink>
+    </div>
+
+    <table class="table table-bordered">
+        <thead class="table-dark">
+            <tr>
+                @if (indicadores.Count > 0)
+                {
+                    @foreach (var header in indicadores.First().Keys)
+                    {
+                        <th>@header</th>
+                    }
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var row in indicadores)
+            {
+                <tr>
+                    @foreach (var cell in row.Values)
+                    {
+                        <td>@cell</td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<Dictionary<string, object>> indicadores = new();
+    private bool datosCargados = true;
+    private string? errorMensaje;
+
+    private async Task ObtenerConsulta1()
+    {
+        var consultaSQL = @"select i.codigo, i.nombre , i.objetivo, i.alcance, i.formula, t.nombre as NombreTipoIndicador,  
+                                u.descripcion as descripcionUnidadMedicion, i.meta, s.nombre as NombreSentido, f.nombre as frecuencia,
+                                a.nombre as articulo, l.descripcion as literal, n.descripcion as numeral, p.descripcion as paragrafo
+                                    from indicador i
+                                        inner join tipoindicador t on i.fkidtipoindicador = t.id
+                                        inner join unidadmedicion u on i.fkidunidadmedicion = u.id
+                                        inner join sentido s on i.fkidsentido = s.id
+                                        inner join frecuencia f on i.fkidfrecuencia = f.id
+                                        inner join articulo a on i.fkidarticulo = a.id
+                                        inner join literal l on i.fkidliteral = l.id
+                                        inner join numeral n on i.fkidnumeral = n.id
+                                        inner join paragrafo p on i.fkidparagrafo = p.id;";
+
+        await EjecutarConsulta(consultaSQL);
+    }
+
+    private async Task ObtenerConsulta2()
+    {
+        var consultaSQL = @"SELECT 
+                                i.id,
+                                i.codigo,
+                                i.nombre,
+                                i.objetivo,
+                                i.formula,
+                                i.meta,
+                                rv.nombre AS NombreRepresentacionVisual
+                            FROM indicador i
+                            LEFT JOIN represenvisualporindicador rvi ON i.id = rvi.fkidindicador
+                            LEFT JOIN represenvisual rv ON rvi.fkidrepresenvisual = rv.id;";
+
+        await EjecutarConsulta(consultaSQL);
+    }
+
+    private async Task ObtenerConsulta3()
+    {
+        var consultaSQL = @"SELECT 
+                                i.id,
+                                i.codigo,
+                                i.nombre,
+                                i.objetivo,
+                                i.formula,
+                                i.meta,
+                                a.nombre AS NombreResponsable,
+                                ta.nombre AS TipoActor
+                            FROM indicador i
+                            LEFT JOIN responsablesporindicador rpi ON i.id = rpi.fkidindicador
+                            LEFT JOIN actor a ON rpi.fkidresponsable = a.id
+                            LEFT JOIN tipoactor ta ON a.fkidtipoactor = ta.id;";
+
+        await EjecutarConsulta(consultaSQL);
+    }
+
+    private async Task ObtenerConsulta4()
+    {
+        var consultaSQL = @"SELECT 
+                                i.id,
+                                i.codigo,
+                                i.nombre,
+                                i.objetivo,
+                                i.formula,
+                                i.meta,
+                                f.nombre AS NombreFuente
+                            FROM indicador i
+                            LEFT JOIN fuentesporindicador fpi ON i.id = fpi.fkidindicador
+                            LEFT JOIN fuente f ON fpi.fkidfuente = f.id;";
+
+        await EjecutarConsulta(consultaSQL);
+    }
+
+    private async Task ObtenerConsulta5()
+    {
+        var consultaSQL = @"SELECT 
+                                i.id,
+                                i.codigo,
+                                i.nombre,
+                                i.objetivo,
+                                i.formula,
+                                i.meta,
+                                v.nombre AS NombreVariable,
+                                vpi.dato AS Dato,
+                                vpi.fechadato AS FechaDato
+                            FROM indicador i
+                            LEFT JOIN variablesporindicador vpi ON i.id = vpi.fkidindicador
+                            LEFT JOIN variable v ON vpi.fkidvariable = v.id;";
+
+        await EjecutarConsulta(consultaSQL);
+    }
+
+    private async Task ObtenerConsulta6()
+    {
+        var consultaSQL = @"select i.codigo, i.nombre , i.objetivo, i.alcance, i.formula, t.nombre as NombreTipoIndicador,  
+                                u.descripcion as descripcionUnidadMedicion, i.meta, s.nombre as NombreSentido, f.nombre as frecuencia,
+                                a.nombre as articulo, l.descripcion as literal, n.descripcion as numeral, p.descripcion as paragrafo,
+                                r.id as idResultado, r.resultado as Resultado, r.fechacalculo as fechaCalculo
+                                from indicador i
+                                inner join tipoindicador t on i.fkidtipoindicador = t.id
+                                inner join unidadmedicion u on i.fkidunidadmedicion = u.id
+                                inner join sentido s on i.fkidsentido = s.id
+                                inner join frecuencia f on i.fkidfrecuencia = f.id
+                                inner join articulo a on i.fkidarticulo = a.id
+                                inner join literal l on i.fkidliteral = l.id
+                                inner join numeral n on i.fkidnumeral = n.id
+                                inner join paragrafo p on i.fkidparagrafo = p.id
+                                left join resultadoindicador r on i.id = r.fkidindicador;";
+
+        await EjecutarConsulta(consultaSQL);
+    }
+    
+    private async Task EjecutarConsulta(string consultaSQL)
+    {
+        var jsonConsulta = new
+        {
+            consulta = consultaSQL
+        };
+
+        try
+        {
+            var respuesta = await Http.PostAsJsonAsync("http://localhost:5266/api/proyecto/indicador/ejecutar-consulta-parametrizada", jsonConsulta);
+
+            if (respuesta.IsSuccessStatusCode)
+            {
+                var listaIndicadores = await respuesta.Content.ReadFromJsonAsync<List<Dictionary<string, object>>>();
+                if (listaIndicadores != null)
+                {
+                    indicadores = listaIndicadores;
+                }
+                else
+                {
+                    errorMensaje = "No se encontraron indicadores.";
+                }
+            }
+            else
+            {
+                errorMensaje = "Error al obtener indicadores.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error al cargar indicadores: {ex.Message}";
+        }
+    }
+}
